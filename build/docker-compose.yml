@@ -1,0 +1,43 @@
+services:
+
+  laravel:
+    build: .
+    container_name: default_app
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "8000:8000"
+      - "8080:8080"
+      - "8008:8008"
+
+
+    networks:
+      app_network:
+        ipv4_address: 172.20.0.20
+    volumes:
+      - ./../volumes/laravel:/var/www/html
+      - ./../secret/.env:/var/www/html/.env:ro
+      - ./000-default.conf:/etc/apache2/sites-available/000-default.conf
+
+  DB:
+    image: mariadb:latest
+    container_name: mariadb_prueba
+    restart: unless-stopped
+    ports:
+      - "3306:3306"
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
+      MARIADB_DATABASE: ${MARIADB_DATABASE}
+      MARIADB_USER: ${MARIADB_USER}
+      MARIADB_PASSWORD: ${MARIADB_PASSWORD}
+    volumes:
+    - ./../volumes/database:/var/lib/mysql
+    networks:
+      app_network:
+        ipv4_address: 172.20.0.10
+
+networks:
+  app_network:
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
