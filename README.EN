@@ -5,12 +5,16 @@
     shared via Git/GitHub.
 
     The setup is configured so that the Laravel project is automatically
-    created the first time it is started, by previously defining in the
-    build files the name you will give the container and the default project.
-    If the name doesn't matter to you, you can leave it as default
-    without breaking anything. The auxiliary script helps you automate things like
-    creating a new project and starting up to 2 additional Laravel
-    development servers on ports 8080 and 8008.
+    created the first time the containers are started, by previously defining
+    the configuration parameters in the build files for the container's name
+    and the project name. If the name is irrelevant to you, you can leave it
+    as default without breaking anything. The supplementary script helps you
+    automate tasks like creating a new project and starting up to 2 additional
+    Laravel development servers on ports 8080 and 8008.
+
+    The 000-default.conf Apache file has been mapped in case the container's
+    port 80 is desired for use under certain circumstances. You only need to edit
+    the DocumentRoot path to view the site.
 
 # Requirements
 
@@ -18,24 +22,23 @@
 
 # Configuration
 
-    1. Assign the environment variables to define access to the
-    database; you can find them inside the `build` folder
-    in the file `.env`:
+    1. Assign the environment variables to define database access; you can
+    find them inside the `build` folder, in the `.env` file:
 
     2. Assign the default name of the project you want to work on
     in the `entrypoint` file and the helper script `go.sh`.
 
     3. Secret Directory: Access the `secret/` folder.
     
-    Edit the `secret/.env` file and set the database credentials
-    so that Laravel knows how to connect. These credentials should be
-    the same as those previously defined in the `.env` file for Docker Compose
-    to add those environment variables.
+    Edit the `secret/.env` file and set the database credentials so that
+    Laravel knows how to connect. These credentials are understood to be the
+    same ones previously defined in the `.env` file for Docker Compose to
+    add those environment variables.
 
     Note: This `.env` file is mounted directly into the Laravel container
           for the DB connection and MUST NOT be included in Git.
 
-## Getting Started
+## First Steps
 
     Follow these simple steps to start the application:
 
@@ -46,16 +49,17 @@ git clone https://github.com/vernizus/laravel-dev-environment.git
 #   2. Access the build folder and Build and Start the Containers:
 
 cd build
-docker compose -f build/laravel-sql.yml up -d --build
+docker compose up -d --build
 
     (The `entrypoint.sh` script will run automatically to create
-    the Laravel project and the `vendor` folder if they do not exist.)
+    the Laravel project and the `vendor` folder if they do not exist and to
+    start the Laravel development server on port 8000.)
 
 #   3. Execute Post-Creation Setup (Migrations):
 
     Once the containers are running and the project has been created,
-    use the auxiliary script `go.sh` to execute the initial
-    database migrations.
+    use the auxiliary script `go.sh` to copy the .env file and
+    execute the initial database migrations.
 
 chmod +x go.sh
 ./go.sh -i
@@ -72,44 +76,63 @@ chmod +x go.sh
     * `build/`: Container build directory
     * `build/Dockerfile`: Defines the PHP/Composer image.
     * `build/docker-compose.yml`: Defines the `laravel` and `DB` (MariaDB) services.
+    * `build/000-default.conf`: Used for Apache and defining the DocumentRoot.
     * `entrypoint.sh`: Initializes the Laravel project, dependencies, and web server.
-    * `build/.env`: Environment variables for Docker Compose
+    * `build/.env`: Environment variables for Docker Compose.
     * `go.sh`: Auxiliary script for tasks.
     * `secret/.env`: Configuration file for DB credentials.
     * `volumes`: Directory where database volumes and laravel project volumes are persistently stored.
 
 # Script go.sh
 
-The `go.sh` script is the main tool for interacting with your Docker/Laravel environment.
+    The go.sh script is the main tool for interacting with your Docker/Laravel
+    environment. Most commands affecting the application require you to specify
+    the target project if you are working on or creating multiple projects
+    simultaneously:
 
-Most commands affecting the application require you to specify the target project:
+    # General:
+    ./go.sh -p <project_name> [command]
 
-# General:
-./go.sh -p <project_name> [command]
+    # To use port 8080 and start a development server:
+    ./go.sh -p <project_name> --port8080 -r
 
-# To use port 8080:
-./go.sh -p <project_name> --port8080 -r
+    # Main Functions
 
-Main Functions
+    Display Help:
+    > -h Displays the help message with the list of commands and options.
 
-    Project Creation: Use `--new <name>` to generate a new Laravel application.
+    Project Creation:
+    > --new <name> to generate a new Laravel application.
 
-    Select Project: Use `-p <name>` to specify which project to run commands on.
+    Select Project:
+    > -p <name> to specify which project to run commands on.
 
-    Initialize: `-i` executes the initial setup (`migrate:fresh --seed`).
+    Initialize:
+    > -i executes the initial setup (migrate:fresh --seed). It can be used if the
+        secret/.env file is modified to automatically run the fresh migration.
 
-    Maintenance: `-c` clears all Laravel cache.
+    Maintenance:
+    > -c clears all Laravel cache.
+    > -m Runs standard migrations and seeders
 
-    Direct Access: `-s` gives you direct access to the container shell (`bash`).
+    Direct Access:
+    > -s gives you direct access to the container shell (bash).
 
-    > Web Server
+    Start Server:
+    > -r starts the development web server in the background for the current project.
 
-    Start Server: `-r` starts the development web server in the background for the current project.
+    Available Ports:
+    > If no port is specified, 8000 is used (default), which is not recommended.
+      It is recommended to use --port8080 or --port8008 to work with other apps
+      or if the default port of the main project needs to be changed.
 
-        Available Ports: If no port is specified, 8000 is used (default). Alternatively, you can use `--port8080` or `--port8008`.
-
-    Stop Server: `-k` stops the background development web server, using the same port it was started with.
-
+    Stop Server:
+    > -k stops the background development web server, using the same port it was
+        started with. If a specific port was used, specify it (does not apply to port 80).
+    
+    Install Dependencies
+    > --composer Executes composer install inside the container to install
+                 PHP dependencies for the current project.
 # Contribution
 
     Remember to keep the `.gitignore` file updated to
