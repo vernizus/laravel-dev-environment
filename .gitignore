@@ -1,0 +1,34 @@
+# * = name of you proyect, please replace
+# Dependency and Build Directories
+/volumes/laravel/*/vendor
+/volumes/laravel/*/node_modules
+/volumes/laravel/*/build
+/volumes/laravel/*/hot
+
+# Storage and Cache
+/volumes/laravel/*/storage
+/volumes/laravel/*/bootstrap/cache/*.php
+
+# Environment
+/volumes/laravel/*/.env
+.env.*
+ # Keep the example template
+!.env.example
+
+# Testing and Temporary Files
+/laravel/phpunit.xml
+/laravel/.env.testing
+
+# Log and Database Files
+*.log
+*.cache
+*.sqlite
+/volumes/database/*.sql
+*.db
+*.ibd
+*.ib_logfile*
+
+# IDE/System Files (optional)
+.idea/
+.vscode/
+Thumbs.db

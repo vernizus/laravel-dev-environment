@@ -1,0 +1,116 @@
+# Laravel + MariaDB with Docker Compose
+
+    This implementation provides a complete and portable Laravel development
+    environment using Docker Compose, designed to be easily integrated and
+    shared via Git/GitHub.
+
+    The setup is configured so that the Laravel project is automatically
+    created the first time it is started, by previously defining in the
+    build files the name you will give the container and the default project.
+    If the name doesn't matter to you, you can leave it as default
+    without breaking anything. The auxiliary script helps you automate things like
+    creating a new project and starting up to 2 additional Laravel
+    development servers on ports 8080 and 8008.
+
+# Requirements
+
+    Docker: (Includes Docker Engine and Docker Compose).
+
+# Configuration
+
+    1. Assign the environment variables to define access to the
+    database; you can find them inside the `build` folder
+    in the file `.env`:
+
+    2. Assign the default name of the project you want to work on
+    in the `entrypoint` file and the helper script `go.sh`.
+
+    3. Secret Directory: Access the `secret/` folder.
+    
+    Edit the `secret/.env` file and set the database credentials
+    so that Laravel knows how to connect. These credentials should be
+    the same as those previously defined in the `.env` file for Docker Compose
+    to add those environment variables.
+
+    Note: This `.env` file is mounted directly into the Laravel container
+          for the DB connection and MUST NOT be included in Git.
+
+## Getting Started
+
+    Follow these simple steps to start the application:
+
+#   1. Clone the Repository:
+
+git clone https://github.com/vernizus/laravel-dev-environment.git
+
+#   2. Access the build folder and Build and Start the Containers:
+
+cd build
+docker compose -f build/laravel-sql.yml up -d --build
+
+    (The `entrypoint.sh` script will run automatically to create
+    the Laravel project and the `vendor` folder if they do not exist.)
+
+#   3. Execute Post-Creation Setup (Migrations):
+
+    Once the containers are running and the project has been created,
+    use the auxiliary script `go.sh` to execute the initial
+    database migrations.
+
+chmod +x go.sh
+./go.sh -i
+
+# Application Access
+
+    Once the migration setup is complete, you can
+    access the application in your web browser:
+
+* URL: `http://localhost:8000`
+
+# Project Structure
+
+    * `build/`: Container build directory
+    * `build/Dockerfile`: Defines the PHP/Composer image.
+    * `build/docker-compose.yml`: Defines the `laravel` and `DB` (MariaDB) services.
+    * `entrypoint.sh`: Initializes the Laravel project, dependencies, and web server.
+    * `build/.env`: Environment variables for Docker Compose
+    * `go.sh`: Auxiliary script for tasks.
+    * `secret/.env`: Configuration file for DB credentials.
+    * `volumes`: Directory where database volumes and laravel project volumes are persistently stored.
+
+# Script go.sh
+
+The `go.sh` script is the main tool for interacting with your Docker/Laravel environment.
+
+Most commands affecting the application require you to specify the target project:
+
+# General:
+./go.sh -p <project_name> [command]
+
+# To use port 8080:
+./go.sh -p <project_name> --port8080 -r
+
+Main Functions
+
+    Project Creation: Use `--new <name>` to generate a new Laravel application.
+
+    Select Project: Use `-p <name>` to specify which project to run commands on.
+
+    Initialize: `-i` executes the initial setup (`migrate:fresh --seed`).
+
+    Maintenance: `-c` clears all Laravel cache.
+
+    Direct Access: `-s` gives you direct access to the container shell (`bash`).
+
+    > Web Server
+
+    Start Server: `-r` starts the development web server in the background for the current project.
+
+        Available Ports: If no port is specified, 8000 is used (default). Alternatively, you can use `--port8080` or `--port8008`.
+
+    Stop Server: `-k` stops the background development web server, using the same port it was started with.
+
+# Contribution
+
+    Remember to keep the `.gitignore` file updated to
+    add or remove directories/files that should not be versioned.
