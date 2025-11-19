@@ -13,8 +13,8 @@
     Laravel development servers on ports 8080 and 8008.
 
     The 000-default.conf Apache file has been mapped in case the container's
-    port 80 is desired for use under certain circumstances. You only need to edit
-    the DocumentRoot path to view the site.
+    port 80 is desired for use under certain circumstances. You only need to 
+    edit the DocumentRoot path to view the site.
 
 # Requirements
 
@@ -75,13 +75,16 @@ chmod +x go.sh
 
     * `build/`: Container build directory
     * `build/Dockerfile`: Defines the PHP/Composer image.
-    * `build/docker-compose.yml`: Defines the `laravel` and `DB` (MariaDB) services.
+    * `build/docker-compose.yml`: Defines the `laravel` and 
+                                  `DB` (MariaDB) services.
     * `build/000-default.conf`: Used for Apache and defining the DocumentRoot.
-    * `entrypoint.sh`: Initializes the Laravel project, dependencies, and web server.
+    * `entrypoint.sh`: Initializes the Laravel project, 
+                       dependencies, and web server.
     * `build/.env`: Environment variables for Docker Compose.
     * `go.sh`: Auxiliary script for tasks.
     * `secret/.env`: Configuration file for DB credentials.
-    * `volumes`: Directory where database volumes and laravel project volumes are persistently stored.
+    * `volumes`: Directory where database volumes and laravel project 
+                 volumes are persistently stored.
 
 # Script go.sh
 
@@ -108,8 +111,9 @@ chmod +x go.sh
     > -p <name> to specify which project to run commands on.
 
     Initialize:
-    > -i executes the initial setup (migrate:fresh --seed). It can be used if the
-        secret/.env file is modified to automatically run the fresh migration.
+    > -i executes the initial setup (migrate:fresh --seed). It can be used 
+         if the secret/.env file is modified to automatically 
+         run the fresh migration.
 
     Maintenance:
     > -c clears all Laravel cache.
@@ -119,7 +123,8 @@ chmod +x go.sh
     > -s gives you direct access to the container shell (bash).
 
     Start Server:
-    > -r starts the development web server in the background for the current project.
+    > -r starts the development web server in the background for 
+         the current project.
 
     Available Ports:
     > If no port is specified, 8000 is used (default), which is not recommended.
@@ -128,7 +133,8 @@ chmod +x go.sh
 
     Stop Server:
     > -k stops the background development web server, using the same port it was
-        started with. If a specific port was used, specify it (does not apply to port 80).
+        started with. If a specific port was used, specify it 
+        (does not apply to port 80).
     
     Install Dependencies
     > --composer Executes composer install inside the container to install
