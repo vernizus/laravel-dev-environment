@@ -122,8 +122,11 @@ chmod +x go.sh
    > -p <nombre> para especificar en qué proyecto ejecutar los comandos.
 
    Inicializar: 
-   > -i ejecuta la configuración inicial (migrate:fresh --seed), se puede usar si se 
-        modifica el archivo secreto/.env y ejecutar el fresh automaticamente. 
+   > -i ejecuta la configuración inicial (migrate:fresh --seed) para que funcione la
+        conexion a la base de datos, adiconalmente añade el script go.sh a tu path
+        para que puedas en los subdirectorio usarlo y no tener que volver atras y 
+        ejecutarlo (se puede usar si se modifica el archivo secreto/.env 
+        y ejecutar el fresh automaticamente). 
 
    Mantenimiento:
    > -c limpia toda la caché de Laravel.
