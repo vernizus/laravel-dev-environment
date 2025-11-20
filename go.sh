@@ -177,6 +177,24 @@ while [[ $# -gt 0 ]]; do
         
         # 5. INITIALIZATION COMMANDS
         -i|--init)
+           
+            # ----------------------------------------------------
+            # >>> ADD TO PATH <<<
+            if [[ -n "$BASH_SOURCE" ]]; then
+                REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+            else
+                REPO_ROOT="$(dirname "$(readlink -f "$0")")" 
+            fi
+
+            # Add to PATH if it doesn't already exist
+            if [[ ":$PATH:" != *":$REPO_ROOT:"* ]]; then
+                export PATH="$REPO_ROOT:$PATH"
+                echo "✅ 'go.sh' directory ($REPO_ROOT) added to \$PATH for this session."
+                # Add the 'go' alias
+                alias go='go.sh'
+                echo "✨ 'go' alias created."
+            fi
+            # ----------------------------------------------------
             echo "🔥 Executing initial setup for '$PROJECT_NAME': Migrate:Fresh and Seed."
             docker exec -w $BASE_DIR $CONTAINER_NAME cp .env $PROJECT_PATH
             execute_artisan migrate:fresh --seed
