@@ -108,6 +108,7 @@ display_help() {
     echo "-.-     -c, --clear           Clears all Laravel cache."
     echo "-.-     --composer            Runs 'composer install' for PHP dependencies."
     echo "-.-     -s, --shell           Enters the bash shell of the application container."
+    echo "-.-     -M, --make-model      Creates one or more new Laravel Models with migrations."
     echo "-.-"
     echo "-.- Help:"
     echo "-.-     -h, --help            Displays this help message."
@@ -214,6 +215,16 @@ while [[ $# -gt 0 ]]; do
             execute_artisan view:clear
             execute_artisan route:clear
             shift
+            ;;
+
+            -M|--make-model)
+            shift
+            for model_name in "$@"; do
+                if [[ -n "$model_name" ]]; then
+                    echo "🏭 Executing artisan: make:model $model_name -m"
+                    execute_artisan make:model "$model_name" -m 
+                fi
+            done
             ;;
         --composer)
             echo "📦 Executing composer install in '$PROJECT_NAME'..."
