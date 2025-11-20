@@ -19,7 +19,8 @@
 
 # Autor
 
-    Este entorno ha sido creado y mantenido por Alejandro Fernandes (Vernizus Luna).
+    Este entorno ha sido creado y mantenido por:
+    >  Alejandro Fernandes (Vernizus Luna).
 
     Si tienes sugerencias, ideas o encuentras algún problema, estaré encantado de revisarlo.  
     Puedes contactar, abrir un Issue o enviar un Pull Request en el repositorio.
