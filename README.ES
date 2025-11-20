@@ -17,6 +17,17 @@
     se deseara usar el puerto 80 del contenedor, solo se debe editar la ruta del
     DocumentRoot y se podra ver el sitio.
 
+# Autor
+
+    Este entorno ha sido creado y mantenido por Alejandro Fernandes (Vernizus Luna).
+
+    Si tienes sugerencias, ideas o encuentras algún problema, estaré encantado de revisarlo.  
+    Puedes contactar, abrir un Issue o enviar un Pull Request en el repositorio.
+
+    - GitHub: https://github.com/vernizus
+    - LinkedIn: https://www.linkedin.com/in/gabriel-fernandes-998b64320
+
+
 # Requisitos
 
     Docker: (Incluye Docker Engine y Docker Compose).

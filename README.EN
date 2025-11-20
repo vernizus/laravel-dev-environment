@@ -16,6 +16,16 @@
     port 80 is desired for use under certain circumstances. You only need to 
     edit the DocumentRoot path to view the site.
 
+# Author
+    
+    This environment is created and maintained by Alejandro Fernandes (Vernizus Luna).
+
+    If you have suggestions, ideas, or if you encounter any issues,
+    feel free to reach out, open an Issue, or submit a Pull Request.
+
+    - GitHub:   https://github.com/vernizus
+    - LinkedIn: https://www.linkedin.com/in/gabriel-fernandes-998b64320
+
 # Requirements
 
     Docker: (Includes Docker Engine and Docker Compose).
