@@ -66,14 +66,17 @@ docker compose up -d --build
     the Laravel project and the `vendor` folder if they do not exist and to
     start the Laravel development server on port 8000.)
 
-#   3. Execute Post-Creation Setup (Migrations):
+#    3. Execute Post-Creation Setup (Migrations):
 
     Once the containers are running and the project has been created,
-    use the auxiliary script `go.sh` to copy the .env file and
-    execute the initial database migrations.
+    use the auxiliary script `go.sh` to copy the .env file,
+    execute the initial database migrations and add the script
+    to your path, thus allowing you to use only the alias go within other 
+    subdirectories inside the repository, facilitating the execution of 
+    other help commands of the same script.
 
 chmod +x go.sh
-./go.sh -i
+. go.sh -i
 
 # Application Access
 
@@ -122,9 +125,11 @@ chmod +x go.sh
     > -p <name> to specify which project to run commands on.
 
     Initialize:
-    > -i executes the initial setup (migrate:fresh --seed). It can be used 
-         if the secret/.env file is modified to automatically 
-         run the fresh migration.
+    > -i executes the initial configuration (migrate:fresh --seed) so that the
+         database connection works, additionally it adds the go.sh script to your path
+         so that you can use it in subdirectories and avoid having to go back and 
+         execute it (can be used if the secreto/.env file is modified 
+         and the fresh migration is run automatically).
 
     Maintenance:
     > -c clears all Laravel cache.
