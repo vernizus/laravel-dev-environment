@@ -72,11 +72,14 @@ docker compose up -d --build
 #    3. Ejecutar Setup Post-Creación (Migraciones):
 
     Una vez que los contenedores estén corriendo y el proyecto se haya creado,
-    utiliza el script auxiliar `go.sh` para copiar el archivo .env y
-    ejecutar las migraciones iniciales de la base de datos.
+    utiliza el script auxiliar `go.sh` para copiar el archivo .env,
+    ejecutar las migraciones iniciales de la base de datos y añadir el script
+    a tu path, pudiendo asi usar solo con el alias go dentro de otros 
+    subdirectorios dentro del repositorio facilitando ejecucion de otros comandos
+    de ayuda del mismo script.
 
 chmod +x go.sh
-./go.sh -i
+. go.sh -i
 
 # Acceso a la Aplicación
 
@@ -105,10 +108,10 @@ chmod +x go.sh
     a la vez:
 
    # General:
-   ./go.sh -p <nombre_proyecto> [comando]
+   go -p <nombre_proyecto> [comando]
 
    # Para usar el puerto 8080 y levantar un servidor de desarrollo:
-   ./go.sh -p <nombre_proyecto> --port8080 -r
+   go -p <nombre_proyecto> --port8080 -r
 
    # Funciones Principales
 
