@@ -178,6 +178,7 @@ while [[ $# -gt 0 ]]; do
         # 5. INITIALIZATION COMMANDS
         -i|--init)
             echo "🔥 Executing initial setup for '$PROJECT_NAME': Migrate:Fresh and Seed."
+            docker exec -w $BASE_DIR $CONTAINER_NAME cp .env $PROJECT_PATH
             execute_artisan migrate:fresh --seed
             shift
             ;;
