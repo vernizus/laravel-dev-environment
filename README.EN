@@ -121,6 +121,8 @@ chmod +x go.sh
     Project Creation:
     > --new <name> to generate a new Laravel application.
     > --clone <user/repository>  Initializes Git, sets origin, fixes permissions,"
+                                 Make sure you are inside the target project 
+                                 directory before using --clone. ⚠️
 
     Select Project:
     > -p <name> to specify which project to run commands on.
