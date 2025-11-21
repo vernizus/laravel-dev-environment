@@ -30,7 +30,7 @@ execute_composer() {
 
 wait_for_mysql() {
     echo "⏳ Waiting for MySQL to be ready..."
-    until docker exec $CONTAINER_NAME mysql -h"$DB_HOST" -u"$DB_USERNAME" -p"$DB_PASSWORD" -e "SELECT 1" &>/dev/null; do
+    until docker exec mariadb_dev ss -nlt | grep -q ':3306'; do
         printf "."
         sleep 1
     done
