@@ -28,6 +28,15 @@ execute_composer() {
     docker exec -w $PROJECT_PATH $CONTAINER_NAME composer "$@"
 }
 
+wait_for_mysql() {
+    echo "⏳ Waiting for MySQL to be ready..."
+    until docker exec $CONTAINER_NAME mysql -h"$DB_HOST" -u"$DB_USERNAME" -p"$DB_PASSWORD" -e "SELECT 1" &>/dev/null; do
+        printf "."
+        sleep 1
+    done
+    echo ""
+    echo "✅ MySQL is ready!"
+}
 
 # --- NEW: GIT CLONE & SYNC FUNCTION ---
 ########################################
@@ -290,6 +299,7 @@ while [[ $# -gt 0 ]]; do
             # ----------------------------------------------------
             echo "🔥 Executing initial setup for '$PROJECT_NAME': Migrate:Fresh and Seed."
             docker exec -w $BASE_DIR $CONTAINER_NAME cp .env $PROJECT_PATH
+            wait_for_mysql
             execute_artisan migrate:fresh --seed
             shift
             ;;
