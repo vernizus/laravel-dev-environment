@@ -120,6 +120,8 @@ chmod +x go.sh
 
    Creación de Proyectos: 
    > --new <nombre> para generar una nueva aplicación Laravel.
+   > --clone <user/repo>   Inicializa Git, configura el remoto origin, corrige 
+                           permisos, limpia los archivos locales y ejecuta git pull.
 
    Seleccionar Proyecto: 
    > -p <nombre> para especificar en qué proyecto ejecutar los comandos.
@@ -134,6 +136,7 @@ chmod +x go.sh
    Mantenimiento:
    > -c limpia toda la caché de Laravel.
    > -m Ejecuta migraciones y seeders estándar
+   > -M, --make-MMC  Crea uno o más nuevos Modelos de Laravel + Migraciones + Controlador.
 
    Acceso Directo:
    > -s te da acceso directo a la shell (bash) del contenedor.
