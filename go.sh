@@ -28,6 +28,75 @@ execute_composer() {
     docker exec -w $PROJECT_PATH $CONTAINER_NAME composer "$@"
 }
 
+
+# --- NEW: GIT CLONE & SYNC FUNCTION ---
+########################################
+
+git_clone_setup() {
+    local USER_REPO=$1 # e.g., 'vernizus/vernizus_app'
+    local REPO_URL="git@github.com:${USER_REPO}.git"
+    
+    # CRITICAL: Get absolute HOST path (e.g., /home/user/...)
+    local HOST_PROJECT_DIR="$PWD" 
+    
+    if [ -z "$USER_REPO" ]; then
+        echo "❌ Error: You must specify the user/repository to clone."
+        echo "Example: $0 --clone user/repository"
+        exit 1
+    fi
+
+    echo "---------------------------------------------------------"
+    echo "🌐 Starting Git clone and synchronization process"
+    echo "---------------------------------------------------------"
+    
+    # 1. Run 'git init' if the repo is not initialized yet
+    if [ ! -d ".git" ]; then
+        echo "📦 Initializing local Git repository..."
+        git init
+    fi
+    
+    # 2. Configure remote origin
+    if ! git remote show origin 2>/dev/null | grep -q 'Fetch URL:'; then
+        echo "🔗 Adding remote 'origin': $REPO_URL"
+        git remote add origin "$REPO_URL"
+    else
+        echo "🔗 Remote 'origin' already exists. Updating URL..."
+        git remote set-url origin "$REPO_URL"
+    fi
+
+    # 3. Fix 'dubious ownership' errors
+    echo "🛡️ Setting directory as a safe Git directory: $HOST_PROJECT_DIR"
+    git config --global --add safe.directory "$HOST_PROJECT_DIR"
+
+    # 4. Fix permission issues caused by Docker volumes
+    echo "🔑 Resetting ownership of all files to $USER..."
+    sudo chown -R $USER:$USER .
+
+    # 5. Clean untracked files (remove boilerplate from default Laravel)
+    echo "🧹 Cleaning untracked files and directories (git clean -fd)..."
+    git clean -fd
+    
+    # 6. Pull from main or master
+    echo "📥 Executing git pull origin main..."
+    git pull origin main || git pull origin master
+
+    if [ $? -eq 0 ]; then
+        echo "---------------------------------------------------------"
+        echo "✅ Synchronization completed. Code is up to date."
+        echo "---------------------------------------------------------"
+        
+        # 7. Run composer install inside the container
+        echo "📦 Running composer install inside the container..."
+        execute_composer install
+        
+    else
+        echo "❌ Error: 'git pull' could not be completed. Check SSH keys or branch name."
+    fi
+}
+
+########################################
+# --- END GIT CLONE & SYNC FUNCTION ---
+
 # New function to create a new Laravel project 
 create_new_project() {
     local NEW_PROJECT_NAME=$1
@@ -101,6 +170,8 @@ display_help() {
     echo "-.-"
     echo "-.- Initialization/Setup Options:"
     echo "-.-     --new <name>          Creates a new Laravel project in a subdirectory."
+    echo "-.-      --clone <user/repo>  Initializes Git, sets origin, fixes permissions,"
+    echo "-.-                           cleans local files, and runs 'git pull'."
     echo "-.-     -i, --init            Initial setup: migrate:fresh and seed."
     echo "-.-     -m, --migrate         Runs migrations and seeders."
     echo "-.-"
@@ -108,7 +179,7 @@ display_help() {
     echo "-.-     -c, --clear           Clears all Laravel cache."
     echo "-.-     --composer            Runs 'composer install' for PHP dependencies."
     echo "-.-     -s, --shell           Enters the bash shell of the application container."
-    echo "-.-     -M, --make-MMC      Creates one or more new Laravel Models + Migrations + Controller."
+    echo "-.-     -M, --make-MMC        Creates one or more new Laravel Models + Migrations + Controller."
     echo "-.-"
     echo "-.- Help:"
     echo "-.-     -h, --help            Displays this help message."
@@ -176,7 +247,17 @@ while [[ $# -gt 0 ]]; do
             fi
             ;;
         
-        # 5. INITIALIZATION COMMANDS
+        # 5. CLONE YOU GITHUB PROYECT
+        --clone)
+            if [ -n "$2" ] && [[ "$2" != -* ]]; then
+                git_clone_setup "$2"
+                shift 2
+            else
+                echo "❌ Error: Missing repository name (e.g., user/repo) after --clone."
+                display_help; exit 1
+            fi
+            ;;
+        # 6. INITIALIZATION COMMANDS
         -i|--init)
            
             # ----------------------------------------------------
@@ -207,7 +288,7 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         
-        # 6. MAINTENANCE COMMANDS (Clearing cache, composer install, shell access)
+        # 7. MAINTENANCE COMMANDS (Clearing cache, composer install, shell access)
         -c|--clear)
             echo "🧹 Clearing all Laravel cache in '$PROJECT_NAME'..."
             execute_artisan cache:clear
@@ -237,7 +318,7 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
 
-        # 7. HELP AND INVALID
+        # 8. HELP AND INVALID
         -h|--help)
             display_help
             exit 0
