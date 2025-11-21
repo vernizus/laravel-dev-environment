@@ -21,7 +21,7 @@ services:
 
   DB:
     image: mariadb:latest
-    container_name: mariadb_prueba
+    container_name: mariadb_dev
     restart: unless-stopped
     ports:
       - "3306:3306"
