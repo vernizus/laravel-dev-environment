@@ -29,13 +29,13 @@ execute_composer() {
 }
 
 wait_for_mysql() {
-    echo "⏳ Waiting for MySQL to be ready..."
+    echo "⏳ Waiting for MariaDB to be ready..."
     until docker exec mariadb_dev ss -nlt | grep -q ':3306'; do
         printf "."
         sleep 1
     done
     echo ""
-    echo "✅ MySQL is ready!"
+    echo "✅ MariaDB is ready!"
 }
 
 # --- NEW: GIT CLONE & SYNC FUNCTION ---
