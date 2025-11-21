@@ -43,6 +43,19 @@ wait_for_mysql() {
 
 git_clone_setup() {
     local USER_REPO=$1   # Example: 'user/namerepo'
+
+    echo "⚠️ You are about to clone/sync a Laravel project."
+    read -p "Are you sure you are inside the target project directory? (y/N): " CONFIRM
+    case "$CONFIRM" in
+        [yY][eE][sS]|[yY])
+            echo "✅ Proceeding..."
+            ;;
+        *)
+            echo "❌ Aborted. Please navigate to the correct project folder."
+            return 1
+            ;;
+    esac
+    
     local REPO_URL="git@github.com:${USER_REPO}.git"
 
     # Host absolute path where the script is being executed
@@ -190,7 +203,7 @@ display_help() {
     echo "-.-"
     echo "-.- Initialization/Setup Options:"
     echo "-.-     --new <name>          Creates a new Laravel project in a subdirectory."
-    echo "-.-      --clone <user/repo>  Initializes Git, sets origin, fixes permissions,"
+    echo "-.-     --clone <user/repo>   Initializes Git, sets origin, fixes permissions,"
     echo "-.-                           cleans local files, and runs 'git pull'."
     echo "-.-     -i, --init            Initial setup: migrate:fresh and seed."
     echo "-.-     -m, --migrate         Runs migrations and seeders."
