@@ -33,65 +33,76 @@ execute_composer() {
 ########################################
 
 git_clone_setup() {
-    local USER_REPO=$1 # e.g., 'vernizus/vernizus_app'
+    local USER_REPO=$1   # Example: 'user/namerepo'
     local REPO_URL="git@github.com:${USER_REPO}.git"
-    
-    # CRITICAL: Get absolute HOST path (e.g., /home/user/...)
-    local HOST_PROJECT_DIR="$PWD" 
-    
+
+    # Host absolute path where the script is being executed
+    local HOST_PROJECT_DIR="$PWD"
+
     if [ -z "$USER_REPO" ]; then
-        echo "❌ Error: You must specify the user/repository to clone."
-        echo "Example: $0 --clone user/repository"
+        echo "❌ Error: You must specify user/repository for cloning."
+        echo "Example: $0 --clone user/repo"
         exit 1
     fi
 
     echo "---------------------------------------------------------"
     echo "🌐 Starting Git clone and synchronization process"
     echo "---------------------------------------------------------"
-    
-    # 1. Run 'git init' if the repo is not initialized yet
+
+    # 1. Fix permissions BEFORE touching .git
+    echo "🔑 Fixing file ownership for the current directory..."
+    sudo chown -R $USER:$USER "$HOST_PROJECT_DIR"
+
+    # 2. Ensure .git does not exist in a broken state
+    if [ -d ".git" ]; then
+        echo "⚠️ Existing .git folder found. Checking integrity..."
+        if ! git status &>/dev/null; then
+            echo "🧨 The .git directory is corrupted. Removing it..."
+            rm -rf .git
+        fi
+    fi
+
+    # 3. Initialize Git repository if needed
     if [ ! -d ".git" ]; then
         echo "📦 Initializing local Git repository..."
         git init
     fi
-    
-    # 2. Configure remote origin
-    if ! git remote show origin 2>/dev/null | grep -q 'Fetch URL:'; then
-        echo "🔗 Adding remote 'origin': $REPO_URL"
-        git remote add origin "$REPO_URL"
-    else
+
+    # 4. Configure or update remote 'origin'
+    if git remote | grep -q "^origin$"; then
         echo "🔗 Remote 'origin' already exists. Updating URL..."
         git remote set-url origin "$REPO_URL"
+    else
+        echo "🔗 Adding remote 'origin': $REPO_URL"
+        git remote add origin "$REPO_URL"
     fi
 
-    # 3. Fix 'dubious ownership' errors
-    echo "🛡️ Setting directory as a safe Git directory: $HOST_PROJECT_DIR"
+    # 5. Fix “dubious ownership”
+    echo "🛡️ Marking directory as safe for Git: $HOST_PROJECT_DIR"
     git config --global --add safe.directory "$HOST_PROJECT_DIR"
 
-    # 4. Fix permission issues caused by Docker volumes
-    echo "🔑 Resetting ownership of all files to $USER..."
-    sudo chown -R $USER:$USER .
+    echo "📥 Fetching remote branch information..."
+    git fetch origin main || git fetch origin master || {
+        echo "❌ Error: Could not fetch remote repository branches."
+        echo "Verify SSH keys or repository name."
+        exit 1
+    }
 
-    # 5. Clean untracked files (remove boilerplate from default Laravel)
-    echo "🧹 Cleaning untracked files and directories (git clean -fd)..."
-    git clean -fd
-    
-    # 6. Pull from main or master
-    echo "📥 Executing git pull origin main..."
-    git pull origin main || git pull origin master
+    # Determine branch
+    LOCAL_BRANCH="main"
+    git fetch origin main &>/dev/null || LOCAL_BRANCH="master"
 
-    if [ $? -eq 0 ]; then
-        echo "---------------------------------------------------------"
-        echo "✅ Synchronization completed. Code is up to date."
-        echo "---------------------------------------------------------"
-        
-        # 7. Run composer install inside the container
-        echo "📦 Running composer install inside the container..."
-        execute_composer install
-        
-    else
-        echo "❌ Error: 'git pull' could not be completed. Check SSH keys or branch name."
-    fi
+    echo "🔄 Resetting local files to match origin/${LOCAL_BRANCH}..."
+    git reset --hard "origin/${LOCAL_BRANCH}"
+
+    echo "---------------------------------------------------------"
+    echo "✅ Git repository synchronized successfully!"
+    echo "---------------------------------------------------------"
+
+    echo "📦 Running 'composer install' inside the container..."
+    execute_composer install
+
+    echo "🎉 Clone and setup completed!"
 }
 
 ########################################
