@@ -10,8 +10,8 @@ services:
       - "5173:5173"
       - "5174:5174"
     environment:
-      - NODE_ENV=development
-      - CHOKIDAR_USEPOLLING=true
+      - NODE_ENV=${NODE_ENV}
+      - CHOKIDAR_USEPOLLING=${CHOKIDAR_USEPOLLING}
     command: sh -c "npm run dev"
     networks:
       build_app_network:
