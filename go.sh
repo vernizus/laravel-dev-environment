@@ -23,6 +23,79 @@ export PROJECT_NAME CONTAINER_NAME PROJECT_PATH BASE_DIR
 # --- Helper Functions ---
 
 # --------------------------------------------------
+# Function: Fix common DatabaseSeeder issues (HOST COPY VERSION)
+# --------------------------------------------------
+fix_database_seeder() {
+    local PROJECT_PATH="$1"
+    
+    echo "🔧 Checking and fixing DatabaseSeeder..."
+    
+    # Crear archivo temporal en el host
+    cat > /tmp/DatabaseSeeder.php << 'EOF'
+<?php
+
+namespace Database\Seeders;
+
+use App\Models\User;
+use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
+
+class DatabaseSeeder extends Seeder
+{
+    use WithoutModelEvents;
+
+    /**
+     * Seed the application's database.
+     */
+    public function run(): void
+    {
+        // User::factory(10)->create();
+
+        // Crear usuario solo si no existe
+        User::firstOrCreate(
+            ['email' => 'test@example.com'],
+            [
+                'name' => 'Test User',
+                'password' => Hash::make('password'),
+                'email_verified_at' => now(),
+            ]
+        );
+    }
+}
+EOF
+
+    # Copiar al contenedor
+    docker cp /tmp/DatabaseSeeder.php $CONTAINER_NAME:"$PROJECT_PATH/database/seeders/DatabaseSeeder.php"
+    
+    # Asegurar permisos correctos
+    docker exec $CONTAINER_NAME chown www-data:www-data "$PROJECT_PATH/database/seeders/DatabaseSeeder.php"
+    docker exec $CONTAINER_NAME chmod 644 "$PROJECT_PATH/database/seeders/DatabaseSeeder.php"
+    
+    # Limpiar
+    rm -f /tmp/DatabaseSeeder.php
+    
+    echo "🔄 Regenerating autoload..."
+    docker exec -w "$PROJECT_PATH" $CONTAINER_NAME composer dump-autoload
+    
+    echo "✅ DatabaseSeeder fixed via host copy method"
+}
+
+# --------------------------------------------------
+# Function: Fix DatabaseSeeder in current project
+# --------------------------------------------------
+fix_seeder() {
+    if ! validate_project; then
+        return 1
+    fi
+
+    echo "🔧 Fixing DatabaseSeeder for '$PROJECT_NAME'..."
+    fix_database_seeder "$PROJECT_PATH"
+    echo "✅ DatabaseSeeder fixed! Run 'go -m' to test migrations."
+}
+
+
+# --------------------------------------------------
 # Function: Update or add PROJECT_NAME and CONTAINER_NAME in build/.env
 # --------------------------------------------------
 update_env_project_names() {
@@ -192,6 +265,8 @@ git_clone_setup() {
     echo "📦 Running 'composer install' inside the container..."
     execute_composer install
 
+    fix_database_seeder "$PROJECT_PATH"
+
     echo "🎉 Clone and setup completed!"
 }
 
@@ -334,6 +409,8 @@ display_help() {
     echo "│ CODE GENERATION & MAINTENANCE                                │"
     echo "│  -M, --make-MMC <models> Create Model+Migration+Controller   │"
     echo "│                         (Multiple models supported)          │"
+    echo "│  --fix-seeder           Fixes DatabaseSeeder to prevent      │"
+    echo "│                         duplicate user errors.               │"
     echo "│  -c, --clear            Clear all cache (cache, route, etc.) │"
     echo "│  --composer             Run composer install                 │"
     echo "│  -s, --shell            Enter container shell                │"
@@ -501,6 +578,11 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
 
+	--fix-seeder)
+	    fix_seeder
+	    shift
+	    ;;
+
         -M|--make-MMC)
             if ! validate_project; then
                 exit 1
@@ -540,7 +622,6 @@ while [[ $# -gt 0 ]]; do
 	    fi
             shift
             ;;
-
 
         -s|--shell)
 	    if validate_project; then
