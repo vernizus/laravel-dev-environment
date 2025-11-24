@@ -42,11 +42,11 @@ load_config() {
         done < "$ENV_FILE"
 
         # Default values + force _node suffix
-        PROJECT_NAME="${PROJECT_NAME:-vernizus}"
+        PROJECT_NAME="${PROJECT_NAME:-default}"
         CONTAINER_NAME="${CONTAINER_NAME:-default_app}"
         CONTAINER_NAME="${CONTAINER_NAME%_node}_node"
     else
-        PROJECT_NAME="vernizus"
+        PROJECT_NAME="default"
         CONTAINER_NAME="default_app_node"
         warn "No .env file found, using defaults"
     fi
