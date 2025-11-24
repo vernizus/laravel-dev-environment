@@ -1,163 +1,147 @@
 # Laravel + MariaDB con Docker Compose
 
-    Esta implementación proporciona un entorno de desarrollo de Laravel 
-    completo y portable utilizando Docker Compose, diseñado para ser 
-    fácilmente integrado y compartido a través de Git/GitHub.
+Esta implementación proporciona un entorno de desarrollo de Laravel completo y portable utilizando Docker Compose, diseñado para ser fácilmente integrado y compartido a través de Git/GitHub.
 
-    El setup está configurado para que el proyecto Laravel se cree 
-    automáticamente la primera vez que se inicie los contenedores
-    previamente definiendo los parametros de configuracion en los
-    archivos del build el nombre que le daras al contenedor y el proyecto, 
-    por defecto si para ti el nombre da igual puedes dejarlo en default
-    sin romper nada, el script complementario te ayuda a automatizar cosas como
-    crear un proyecto nuevo y levantar hasta 2 servidores de desarrollo de 
-    laravel en los puertos adicionales 8080 y 8008.
+El setup está completamente automatizado: desde la creación del proyecto Laravel hasta la configuración de la base de datos, migraciones y servidor de desarrollo. El sistema es multi-proyecto, permitiendo trabajar con varias aplicaciones simultáneamente en diferentes puertos.
 
-    Se ha mapeado el archivo 000-default.conf de Apache por si en alguna cirscuntancia
-    se deseara usar el puerto 80 del contenedor, solo se debe editar la ruta del
-    DocumentRoot y se podra ver el sitio.
+Se ha mapeado el archivo 000-default.conf de Apache por si en alguna circunstancia se deseara usar el puerto 80 del contenedor, solo se debe editar la ruta del DocumentRoot y se podrá ver el sitio.
 
 # Autor
 
-    Este entorno ha sido creado y mantenido por:
-    >  Alejandro Fernandes (Vernizus Luna).
+Este entorno ha sido creado y mantenido por:
+> Alejandro Fernandes (Vernizus Luna).
 
-    Si tienes sugerencias, ideas o encuentras algún problema, estaré encantado de revisarlo.  
-    Puedes contactar, abrir un Issue o enviar un Pull Request en el repositorio.
+Si tienes sugerencias, ideas o encuentras algún problema, estaré encantado de revisarlo. Puedes contactar, abrir un Issue o enviar un Pull Request en el repositorio.
 
-    - GitHub: https://github.com/vernizus
-    - LinkedIn: https://www.linkedin.com/in/gabriel-fernandes-998b64320
-
+- GitHub: https://github.com/vernizus
+- LinkedIn: https://www.linkedin.com/in/gabriel-fernandes-998b64320
 
 # Requisitos
 
-    Docker: (Incluye Docker Engine y Docker Compose).
+- Docker: (Incluye Docker Engine y Docker Compose)
 
-# Configuración
+# Configuración Inicial Automatizada
 
-    1. Asigna las variables de entorno para la definir el acceso a la 
-    base de datos, lo podras encontrar dentro de la carpeta 
-    build el archivo .env:
+## Primeros Pasos después del Clone
 
-    2. Asignar el nombre por defecto del proyecto que quieras trabajar
-    en el archivo entrypoint y en el script de ayuda go.sh.
-
-    3. Directorio Secreto: Accede a la carpeta `secret/`.
-    
-    Edita el archivo `secret/.env` y establece las credenciales de la base 
-    de datos para que laravel sepa como conectarse, se entiende son las
-    mismas definida previamente en el archivo .env para docker compose
-    añada esas variables de entorno.
-
-    Nota: Este archivo `.env` es montado directamente en el contenedor de 
-          Laravel para la conexión a la DB y NO debe ser incluido en Git.
-
-## Primeros Pasos
-
-    Sigue estos sencillos pasos para levantar la aplicación:
-
-#    1. Clonar el Repositorio:
-
+# 1. Clonar el Repositorio:
 git clone https://github.com/vernizus/laravel-dev-environment.git
+cd laravel-dev-environment
 
-#    2. Accede a la carpeta build y para construir e Iniciar los Contenedores:
-
-cd build
-docker compose up -d --build
-
-    (El script `entrypoint.sh` se ejecutará automáticamente para crear 
-     el proyecto Laravel y la carpeta `vendor` si no existen y levantar el
-     servidor de desarrollo de laravel en el puerto 8000.)
-
-#    3. Ejecutar Setup Post-Creación (Migraciones):
-
-    Una vez que los contenedores estén corriendo y el proyecto se haya creado,
-    utiliza el script auxiliar `go.sh` para copiar el archivo .env,
-    ejecutar las migraciones iniciales de la base de datos y añadir el script
-    a tu path, pudiendo asi usar solo con el alias go dentro de otros 
-    subdirectorios dentro del repositorio facilitando ejecucion de otros comandos
-    de ayuda del mismo script.
-
+# 2. Dar permisos de ejecución al script principal:
 chmod +x go.sh
+
+# 3. EJECUCIÓN OBLIGATORIA: Configuración inicial completa
 . go.sh -i
+
+
+# Nota importante: El comando . go.sh -i 
+# (con el punto al principio) es obligatorio ya que:
+
+    1. **Configura nombres**: Te pregunta el nombre del proyecto y contenedor
+    2. **Prepara CLI**: 
+       - Añade el script `go.sh` a tu PATH de la sesión actual
+       - Crea el alias `go` para usar el script desde cualquier subdirectorio
+    3. **Construye infraestructura**:
+       - Construye e inicia todos los servicios Docker (Laravel + MariaDB)
+       - Espera servicios: Verifica que todo esté listo y funcionando
+    4. **Configura aplicación**:
+       - Configura base de datos: Copia el .env y ejecuta migraciones
+       - Ejecuta migraciones y seeders iniciales
+    5. **Prepara todo el entorno para desarrollo**
 
 # Acceso a la Aplicación
 
-    Una vez que el setup de las migraciones se ha completado, puedes 
-    acceder a la aplicación en tu navegador web:
+Una vez completado el setup inicial, puedes acceder a la aplicación:
 
-* URL: `http://localhost:8000`
+    # URL Principal: http://localhost:8000
+
+    # Puertos Alternativos: http://localhost:8080 o http://localhost:8008
 
 # Estructura del Proyecto
 
-    * `build/`: Directorio de construccion de los contenedores
-    * `build/Dockerfile`: Define la imagen PHP/Composer.
-    * `build/docker-compose.yml`: Define los servicios `laravel` y `DB` (MariaDB).
-    * `build/000-default.conf`: Usado para Apache y definir el DocumentRoot 
-    * `entrypoint.sh`: Inicializa el proyecto Laravel, dependencias y server web.
-    * `build/.env`: Variables de entorno para docker composer
-    * `go.sh`: Script auxiliar para tareas.
-    * `secret/.env`: Archivo de configuración para las credenciales de la DB.
-    * `volumes`: Directorio donde se almaceran de manera persistentes los volumenes de la base de datos y los proyectos de laravel
+* `build/`: Directorio de construcción de los contenedores
+* `build/Dockerfile`: Define la imagen PHP/Composer
+* `build/docker-compose.yml`: Define los servicios laravel y DB (MariaDB)
+* `build/000-default.conf`: Configuración de Apache para DocumentRoot
+* `build/entrypoint.sh`: Inicializa proyecto Laravel y dependencias
+* `build/.env`: Variables de entorno para Docker Compose
+* `go.sh`: Script principal para todas las operaciones
+* `secret/.env`: Credenciales de base de datos (NO subir a Git)
+* `volumes/`: Datos persistentes de DB y proyectos Laravel
 
-# Script go.sh
+# Script go.sh 
 
-    El script go.sh es la herramienta principal para interactuar con tu entorno 
-    Docker/Laravel, la mayoría de los comandos que afectan a la aplicación requieren
-    que especifiques el proyecto de destino si estas trabajando o creado varios proyectos
-    a la vez:
+El script go.sh es tu herramienta principal para todo. Una vez ejecutado go --init, puedes usar simplemente go desde cualquier carpeta del proyecto.
 
-   # General:
-   go -p <nombre_proyecto> [comando]
+# Sintaxis general
+go [OPCIONES] [ARGUMENTOS]
 
-   # Para usar el puerto 8080 y levantar un servidor de desarrollo:
-   go -p <nombre_proyecto> --port8080 -r
+# Siempre especifica el proyecto si esta trabajando con varios proyectos (a menos que uses 'default')
+go -p <nombre_proyecto> [comando]
 
-   # Funciones Principales
+# Gestión de Proyectos y Contexto
+go -p mi_proyecto              # Cambiar a proyecto 'mi_proyecto'
+go --new mi_app                # Crear nueva aplicación Laravel
+go --clone usuario/repo        # Clonar y configurar desde GitHub automáticamente
 
-   Mostrar Ayuda:
-   > -h Muestra el mensaje de ayuda con la lista de comandos y opciones.
+# Servidores de Desarrollo Multi-puerto
+go -p mi_proyecto -r             # Servidor en puerto 8000
+go -p mi_proyecto --port8080 -r  # Servidor en puerto 8080  
+go -p mi_proyecto --port8008 -r  # Servidor en puerto 8008
+go -p mi_proyecto -k             # Detener servidor del proyecto
 
-   Creación de Proyectos: 
-   > --new <nombre> para generar una nueva aplicación Laravel.
-   > --clone <user/repo>   Inicializa Git, configura el remoto origin, corrige 
-                           permisos, limpia los archivos locales y ejecuta git pull.
+# Desarrollo Rápido y Mantenimiento
+go -p mi_proyecto -M User Post Category  # Crear Múltiples Modelos+Migraciones+Controllers
+go -p mi_proyecto -m                     # Ejecutar migraciones y seeders
+go -p mi_proyecto -c                     # Limpiar toda la caché de Laravel
+go -p mi_proyecto --composer             # Instalar dependencias Composer
 
-   Seleccionar Proyecto: 
-   > -p <nombre> para especificar en qué proyecto ejecutar los comandos.
+# Acceso y Utilidades
+go -p mi_proyecto -s           # Shell interactivo en el contenedor
+go -h                          # Ayuda completa con ejemplos
 
-   Inicializar: 
-   > -i ejecuta la configuración inicial (migrate:fresh --seed) para que funcione la
-        conexion a la base de datos, adiconalmente añade el script go.sh a tu path
-        para que puedas en los subdirectorio usarlo y no tener que volver atras y 
-        ejecutarlo (se puede usar si se modifica el archivo secreto/.env 
-        y ejecutar el fresh automaticamente). 
+# Clonar proyecto existente desde GitHub:
+go --clone usuario/repositorio  # Clona, configura permisos y dependencias asegurate de estar dentro de la carpeta donde se creo el proyecto cero del contenedor luego esto reescribira con tu proyecto esa carpeta y lo tendras preparado
 
-   Mantenimiento:
-   > -c limpia toda la caché de Laravel.
-   > -m Ejecuta migraciones y seeders estándar
-   > -M, --make-MMC  Crea uno o más nuevos Modelos de Laravel + Migraciones + Controlador.
+# Trabajar con múltiples proyectos:
+go -p api --port8080 -r      # API en puerto 8080
+go -p frontend --port8008 -r # Frontend en puerto 8008  
+go -p api -s                 # Shell en proyecto API
 
-   Acceso Directo:
-   > -s te da acceso directo a la shell (bash) del contenedor.
+# Flujo de Trabajo Típico
 
-   Iniciar Servidor: 
-   > -r levanta el servidor de desarrollo en segundo plano para el proyecto actual.
+1. `. go.sh -i`                    # Configuración inicial
+2. `go --new mi_proyecto`          # Crear nuevo proyecto
+3. `go -p mi_proyecto -r`          # Levantar servidor
+4. `go -p mi_proyecto -M Product`  # Generar modelo
+5. `go -p mi_proyecto -m`          # Ejecutar migraciones
 
-   Puertos Disponibles: 
-   > Si no se especifica un puerto, se usa el 8000 (por defecto) no recomendado 
-     se recomienda usar --port8080 o --port8008 para trabajar con otras apps 
-     o en tal caso de cambiar el puerto por defecto del proyecto principal.
+# Características Avanzadas
 
-   Detener Servidor: 
-   > -k detiene el servidor de desarrollo en segundo plano, usando el mismo puerto 
-        con el que fue iniciado, si se uso uno en concreto especificar no aplica puerto 80.
-  
-   Instalar Dependencias
+> Validación Inteligente
 
-   > --composer Ejecuta composer install dentro del contenedor para instalar 
-                dependencias de PHP para el proyecto actual.
+El script verifica automáticamente:
+
+   * Que los contenedores estén ejecutándose
+
+   * Que el proyecto exista
+
+   * Que sea una aplicación Laravel válida
+
+   * Sugiere soluciones si algo falla
+
+> Multi-proyecto Nativo
+
+Trabaja con tantos proyectos Laravel como necesites, cada uno en su propio directorio dentro de volumes/laravel/.
+Recuperación de Errores
+
+Si encuentras problemas, el script te guía con soluciones específicas y muestra proyectos disponibles.
+
 # Contribución
+Recuerda mantener actualizado el archivo .gitignore para añadir o quitar directorios/archivos que no deban ser versionados. El archivo secret/.env NUNCA debe ser commitado a Git.
 
-    Recuerda mantener actualizado el archivo `.gitignore` para 
-    añadir o quitar directorios/archivos que no deban ser versionados.
+# ¡Importante!: Después del git clone, recuerda siempre ejecutar 
+# . go.sh -i (El punto y espacio antes de go.sh -i son esenciales para 
+# que el alias go esté disponible en tu sesión actual y configurar 
+# todo el entorno automáticamente.
