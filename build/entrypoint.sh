@@ -10,7 +10,6 @@
 PROJECT_NAME="${PROJECT_NAME_CONTAINER:-default}"
 # The final path of the project inside the container will be /var/www/html/default
 PROJECT_PATH="/var/www/html/$PROJECT_NAME"
-
 # Base directory of the volume
 BASE_DIR="/var/www/html"
 

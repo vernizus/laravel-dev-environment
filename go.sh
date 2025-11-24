@@ -1,12 +1,24 @@
 #!/bin/bash
 
-# GLOBAL VARIABLES
-PROJECT_NAME="default" 
-CONTAINER_NAME="default_app"
+# Auto-load variables from build/.env on every execution
+if [[ -f "build/.env" ]]; then
+    source "build/.env"
+fi
+
 BASE_DIR="/var/www/html"
-# Default Laravel port (8000). Overridden by explicit flags.
-SERVER_PORT="8000" 
+PROJECT_NAME="${PROJECT_NAME:-default}"
+CONTAINER_NAME="${CONTAINER_NAME:-default_app}"
 PROJECT_PATH="$BASE_DIR/$PROJECT_NAME"
+SERVER_PORT="${SERVER_PORT:-8000}"
+MYSQL_CONTAINER="${MYSQL_CONTAINER:-mariadb_dev}"
+
+# Docker Compose shortcut
+dc() {
+    docker compose -f build/docker-compose.yml "$@"
+}
+
+export PROJECT_NAME CONTAINER_NAME PROJECT_PATH BASE_DIR
+
 
 # --- Helper Functions ---
 
@@ -58,12 +70,12 @@ wait_for_laravel_ready() {
     local container_name="${1:-$CONTAINER_NAME}"
 
     echo "Waiting for Laravel to be fully ready (artisan serve on port 8000)..."
-    until docker exec "$container_name" ss -lnt 2>/dev/null | grep -q ':8000'; do
+    until docker exec "$CONTAINER_NAME" ss -nlt | grep -q ":8000"; do
         printf "."
         sleep 1
     done
     echo ""
-    echo "Laravel is up and running on http://localhost:8000!"
+    echo "Laravel is up and running on http://localhost:8000"
 }
 
 # Function to update global context variables
@@ -86,7 +98,7 @@ execute_composer() {
 
 wait_for_mysql() {
     echo "⏳ Waiting for MariaDB to be ready..."
-    until docker exec mariadb_dev ss -nlt | grep -q ':3306'; do
+    until docker exec $MYSQL_CONTAINER ss -nlt | grep -q ':3306'; do
         printf "."
         sleep 1
     done
@@ -369,7 +381,14 @@ while [[ $# -gt 0 ]]; do
 	    # >>> definir nombre del contenedor y del proyecto principal <<<
 	    update_env_project_names
 
-	    docker compose -f build/docker-compose.yml up -d --build --quiet-pull
+            # RECARGAR Y RECALCULAR TODAS LAS VARIABLES
+            source build/.env 2>/dev/null || true
+            PROJECT_NAME="${PROJECT_NAME:-default}"
+            CONTAINER_NAME="${CONTAINER_NAME:-default_app}"
+            BASE_DIR="/var/www/html"
+            PROJECT_PATH="$BASE_DIR/$PROJECT_NAME"
+
+	    dc up -d --build --quiet-pull
 		# Esperar a que laravel cree el proyecto por defecto
 	    wait_for_laravel_ready
 	    # ----------------------------------------------------
@@ -399,10 +418,9 @@ while [[ $# -gt 0 ]]; do
             -M|--make-MMC)
             shift
             for model_name in "$@"; do
-                if [[ -n "$model_name" ]]; then
+                [[ "$model_name" == -* ]] && break
                     echo "🏭 Executing artisan: make:model $model_name -mcr"
-                    execute_artisan make:model "$model_name" -mcr 
-                fi
+                    execute_artisan make:model "$model_name" -mcr
             done
             ;;
         --composer)

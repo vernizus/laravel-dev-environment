@@ -11,6 +11,7 @@ services:
       - "8008:8008"
     environment:
       - PROJECT_NAME_CONTAINER=${PROJECT_NAME:-default}
+      - SERVER_PORT=${SERVER_PORT:-8000}
     networks:
       app_network:
         ipv4_address: 172.20.0.20
@@ -21,7 +22,7 @@ services:
 
   DB:
     image: mariadb:latest
-    container_name: mariadb_dev
+    container_name: ${MYSQL_CONTAINER:-mariadb_dev}
     restart: unless-stopped
     ports:
       - "3306:3306"
