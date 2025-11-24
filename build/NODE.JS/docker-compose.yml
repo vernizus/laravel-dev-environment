@@ -1,0 +1,24 @@
+services:
+
+  node:
+    image: node:18-alpine
+    container_name: ${CONTAINER_NAME:-default_app_node}
+    working_dir: /app/${PROJECT_NAME:-default}
+    volumes:
+      - ./../../volumes/laravel:/app
+    ports:
+      - "5173:5173"  # Vite dev server
+      - "5174:5174"  # Por si necesitas otro puerto
+    environment:
+      - NODE_ENV=development
+      - CHOKIDAR_USEPOLLING=true
+      - PROJECT_NAME=${PROJECT_NAME:-vernizus}
+    command: sh -c "cd ${PROJECT_NAME:-default} && npm run dev"
+    networks:
+      node_network:
+        ipv4_address: 172.20.0.20
+
+networks:
+  node_network:
+    external: true
+
