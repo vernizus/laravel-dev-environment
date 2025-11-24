@@ -23,59 +23,59 @@ export PROJECT_NAME CONTAINER_NAME PROJECT_PATH BASE_DIR
 # --- Helper Functions ---
 
 # --------------------------------------------------
-# Función: actualiza o añade PROJECT_NAME y CONTAINER_NAME en build/.env
+# Function: Update or add PROJECT_NAME and CONTAINER_NAME in build/.env
 # --------------------------------------------------
 update_env_project_names() {
     local ENV_FILE="build/.env"
 
-    # Si el archivo no existe → error claro
+    # If the file doesn't exist → clear error
     if [[ ! -f "$ENV_FILE" ]]; then
-        echo "Error: No se encontró el archivo $ENV_FILE"
+        echo "Error: File $ENV_FILE not found"
         exit 1
     fi
 
-    # 1. Preguntar nombre del proyecto
+    # 1. Ask for project name
     echo ""
-    echo "Configuración del nombre del proyecto"
+    echo "Project name configuration"
     echo "-----------------------------------------------"
-    read -p "Nombre del proyecto [actual: $(grep '^PROJECT_NAME=' "$ENV_FILE" | cut -d'=' -f2 || echo 'default') ] (Enter = mantener): " NEW_PROJECT
+    read -p "Project name [current: $(grep '^PROJECT_NAME=' "$ENV_FILE" | cut -d'=' -f2 || echo 'default') ] (Enter = keep): " NEW_PROJECT
     NEW_PROJECT=${NEW_PROJECT:-$(grep '^PROJECT_NAME=' "$ENV_FILE" | cut -d'=' -f2 || echo "default")}
 
-    # 2. Preguntar nombre del contenedor
-    read -p "Nombre del contenedor [actual: $(grep '^CONTAINER_NAME=' "$ENV_FILE" | cut -d'=' -f2 || echo 'default') ] (Enter = mantener): " NEW_CONTAINER
+    # 2. Ask for container name
+    read -p "Container name [current: $(grep '^CONTAINER_NAME=' "$ENV_FILE" | cut -d'=' -f2 || echo 'default') ] (Enter = keep): " NEW_CONTAINER
     NEW_CONTAINER=${NEW_CONTAINER:-$(grep '^CONTAINER_NAME=' "$ENV_FILE" | cut -d'=' -f2 || echo "default")}
 
-    # 3. Actualizar o añadir las líneas con sed (MAGIA PURA)
+    # 3. Update or add lines with sed
     sed -i \
         -e "s|^PROJECT_NAME=.*|PROJECT_NAME=$NEW_PROJECT|" \
         -e "s|^CONTAINER_NAME=.*|CONTAINER_NAME=$NEW_CONTAINER|" \
         "$ENV_FILE"
 
-    # Si por algún motivo no existían → añadirlas al final
+    # If for some reason they didn't exist → add them at the end
     grep -q "^PROJECT_NAME=" "$ENV_FILE" || echo "PROJECT_NAME=$NEW_PROJECT" >> "$ENV_FILE"
     grep -q "^CONTAINER_NAME=" "$ENV_FILE" || echo "CONTAINER_NAME=$NEW_CONTAINER" >> "$ENV_FILE"
 
     echo ""
-    echo "Archivo build/.env actualizado:"
+    echo "File build/.env updated:"
     echo "   PROJECT_NAME=$NEW_PROJECT"
     echo "   CONTAINER_NAME=$NEW_CONTAINER"
     echo ""
 }
 
 # --------------------------------------------------
-# wait_for_laravel_ready()
-# Espera a que Laravel esté completamente listo (puerto 8000 escuchando)
+# Wait for Laravel to be fully ready
 # --------------------------------------------------
 wait_for_laravel_ready() {
     local container_name="${1:-$CONTAINER_NAME}"
+    local port="${2:-$SERVER_PORT}"
 
-    echo "Waiting for Laravel to be fully ready (artisan serve on port 8000)..."
-    until docker exec "$CONTAINER_NAME" ss -nlt | grep -q ":8000"; do
+    echo "Waiting for Laravel to be fully ready (artisan serve on port $port)..."
+    until docker exec "$CONTAINER_NAME" ss -nlt | grep -q ":$port"; do
         printf "."
         sleep 1
     done
     echo ""
-    echo "Laravel is up and running on http://localhost:8000"
+    echo "Laravel is up and running on http://localhost:$port"
 }
 
 # Function to update global context variables
@@ -209,6 +209,19 @@ create_new_project() {
         exit 1
     fi
 
+	# Check if it exists as a file and delete it
+    if docker exec $CONTAINER_NAME [ -f "$NEW_PROJECT_PATH" ]; then
+        echo "⚠️  Found conflicting file at $NEW_PROJECT_PATH. Removing it..."
+        docker exec $CONTAINER_NAME rm -f "$NEW_PROJECT_PATH"
+    fi
+
+	# Check if the directory already exists
+    if docker exec $CONTAINER_NAME [ -d "$NEW_PROJECT_PATH" ]; then
+        echo "✅ Project directory '$NEW_PROJECT_NAME' already exists."
+        echo "Skipping project creation."
+        return 0
+    fi
+
     echo "🏗️  Creating new Laravel project: '$NEW_PROJECT_NAME'..."
 
     docker exec -w $BASE_DIR $CONTAINER_NAME composer create-project --prefer-dist laravel/laravel "$NEW_PROJECT_NAME"
@@ -235,7 +248,7 @@ run_dev_server() {
     if [ $? -eq 0 ]; then
         echo "✅ Development server started in the background for '$PROJECT_NAME'."
         echo "URL: http://localhost:$SERVER_PORT"
-        echo "Use: ./go.sh -p $PROJECT_NAME --port$SERVER_PORT -k to stop it."
+        echo "Use: go -p $PROJECT_NAME --port$SERVER_PORT -k to stop it."
     else
         echo "❌ Error starting the development server."
     fi
@@ -252,6 +265,39 @@ kill_dev_server() {
     else
         echo "⚠️ No 'php artisan serve' process was found running on port $SERVER_PORT for this project."
     fi
+}
+
+# Function validate existing project
+validate_project() {
+    # Verify that the container is running
+    if ! docker ps | grep -q "$CONTAINER_NAME"; then
+        echo "❌ Error: Container '$CONTAINER_NAME' is not running"
+        echo "💡 Start it with: go --init"
+        return 1
+    fi
+
+    # Verify that the project exists
+    if ! docker exec $CONTAINER_NAME [ -d "$PROJECT_PATH" ] 2>/dev/null; then
+        echo "❌ Error: Project '$PROJECT_NAME' doesn't exist at $PROJECT_PATH"
+        echo ""
+        echo "📁 Available projects in $BASE_DIR:"
+        docker exec $CONTAINER_NAME ls -la "$BASE_DIR" 2>/dev/null | grep '^d' | awk '{print "   📂 " $9}' || echo "   (cannot list directory)"
+        echo ""
+        echo "💡 Solutions:"
+        echo "   - Create project: go --new $PROJECT_NAME"
+        echo "   - Switch project: go -p existing_project_name"
+        echo "   - Clone from Git: go --clone user/repo"
+        return 1
+    fi
+
+    # Verify that it has the basic Laravel structure
+    if ! docker exec $CONTAINER_NAME [ -f "$PROJECT_PATH/artisan" ] 2>/dev/null; then
+        echo "⚠️  Warning: Project '$PROJECT_NAME' exists but doesn't look like a Laravel project (artisan not found)"
+        echo "   The directory exists but may not be a valid Laravel application"
+        # No return 1 here, just warning
+    fi
+
+    return 0
 }
 
 # Display help message
@@ -329,11 +375,20 @@ while [[ $# -gt 0 ]]; do
 
         # 3. RUN/KILL SERVER COMMANDS
         -r|--run)
-            run_dev_server
+	    if validate_project; then
+	        run_dev_server
+	    else
+	        echo "💡 Tip: Use 'go --new $PROJECT_NAME' to create the project first"
+	        exit 1
+	    fi
             shift
             ;;
         -k|--kill)
-            kill_dev_server
+	    if validate_project; then
+	        kill_dev_server
+	    else
+	        exit 1
+	    fi
             shift
             ;;
 
@@ -347,7 +402,7 @@ while [[ $# -gt 0 ]]; do
                 display_help; exit 1
             fi
             ;;
-        
+
         # 5. CLONE YOU GITHUB PROYECT
         --clone)
             if [ -n "$2" ] && [[ "$2" != -* ]]; then
@@ -360,7 +415,6 @@ while [[ $# -gt 0 ]]; do
             ;;
         # 6. INITIALIZATION COMMANDS
         -i|--init)
-           
             # ----------------------------------------------------
             # >>> ADD TO PATH <<<
             if [[ -n "$BASH_SOURCE" ]]; then
@@ -377,11 +431,8 @@ while [[ $# -gt 0 ]]; do
                 alias go='go.sh'
                 echo "✨ 'go' alias created."
             fi
-            # ----------------------------------------------------
-	    # >>> definir nombre del contenedor y del proyecto principal <<<
 	    update_env_project_names
 
-            # RECARGAR Y RECALCULAR TODAS LAS VARIABLES
             source build/.env 2>/dev/null || true
             PROJECT_NAME="${PROJECT_NAME:-default}"
             CONTAINER_NAME="${CONTAINER_NAME:-default_app}"
@@ -389,48 +440,94 @@ while [[ $# -gt 0 ]]; do
             PROJECT_PATH="$BASE_DIR/$PROJECT_NAME"
 
 	    dc up -d --build --quiet-pull
-		# Esperar a que laravel cree el proyecto por defecto
-	    wait_for_laravel_ready
-	    # ----------------------------------------------------
-	    # >>> copiando archivo .env para configurar base de datos en laravel <<<
+
+	    wait_for_laravel_ready "$CONTAINER_NAME" "$SERVER_PORT"
+
             echo "🔥 Executing initial setup for '$PROJECT_NAME': Migrate:Fresh and Seed."
             docker exec -w $BASE_DIR $CONTAINER_NAME cp .env $PROJECT_PATH
+
             wait_for_mysql
+
             execute_artisan migrate:fresh --seed
+
+            echo -e "\nALL DONE! Project '$PROJECT_NAME' is ready"
+            echo "   → http://localhost:$SERVER_PORT"
+            echo "   → Container: $CONTAINER_NAME"
             shift
             ;;
+
         -m|--migrate)
-            echo "🔄 Executing migrations and seeders for '$PROJECT_NAME' (artisan migrate --seed)."
-            execute_artisan migrate --seed
+	    if validate_project; then
+	        echo "🔄 Executing migrations and seeders for '$PROJECT_NAME' (artisan migrate --seed)."
+	        execute_artisan migrate --seed
+	    else
+	        exit 1
+	    fi
             shift
             ;;
         
         # 7. MAINTENANCE COMMANDS (Clearing cache, composer install, shell access)
         -c|--clear)
-            echo "🧹 Clearing all Laravel cache in '$PROJECT_NAME'..."
-            execute_artisan cache:clear
-            execute_artisan config:clear
-            execute_artisan view:clear
-            execute_artisan route:clear
+	    if validate_project; then
+	        echo "🧹 Clearing all Laravel cache in '$PROJECT_NAME'..."
+	        execute_artisan cache:clear
+	        execute_artisan config:clear
+	        execute_artisan view:clear
+	        execute_artisan route:clear
+	    else
+	        exit 1
+	    fi
             shift
             ;;
 
-            -M|--make-MMC)
+        -M|--make-MMC)
+            if ! validate_project; then
+                exit 1
+            fi
+
+            if [[ $# -eq 1 ]]; then
+                echo "Error: No model names provided."
+                echo "Usage: go -M User Post Category"
+                exit 1
+            fi
+
             shift
-            for model_name in "$@"; do
-                [[ "$model_name" == -* ]] && break
-                    echo "🏭 Executing artisan: make:model $model_name -mcr"
-                    execute_artisan make:model "$model_name" -mcr
+            local models=()
+            while [[ $# -gt 0 ]] && [[ "$1" != -* ]]; do
+                models+=("$1")
+                shift
+            done
+
+            if [[ ${#models[@]} -eq 0 ]]; then
+                echo "Error: At least one model name is required."
+                echo "Example: go -M Product User Order"
+                exit 1
+            fi
+
+            for model in "${models[@]}"; do
+                echo "Creating model: $model (with migration, controller, resource)"
+                execute_artisan make:model "$model" -mcr
             done
             ;;
+
         --composer)
-            echo "📦 Executing composer install in '$PROJECT_NAME'..."
-            execute_composer install
+	    if validate_project; then
+	        echo "📦 Executing composer install in '$PROJECT_NAME'..."
+	        execute_composer install
+	    else
+	        exit 1
+	    fi
             shift
             ;;
+
+
         -s|--shell)
-            echo "🖥️  Entering the container shell at path '$PROJECT_PATH'..."
-            docker exec -w $PROJECT_PATH -it $CONTAINER_NAME bash
+	    if validate_project; then
+	        echo "🖥️  Entering the container shell at path '$PROJECT_PATH'..."
+	        docker exec -w $PROJECT_PATH -it $CONTAINER_NAME bash
+	    else
+	        exit 1
+	    fi
             shift
             ;;
 
