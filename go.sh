@@ -418,6 +418,7 @@ display_help() {
     echo "│  --clone <user/repo>    Clone & setup from GitHub            │"
     echo "│  -i, --init             Full setup: env, db, migrations      │"
     echo "│  -m, --migrate          Run migrations + seeders             │"
+    echo "│  --node help            Node.js development tools            │"
     echo "│                                                              │"
     echo "│ CODE GENERATION & MAINTENANCE                                │"
     echo "│  -M, --make-MMC <models> Create Model+Migration+Controller   │"
@@ -648,6 +649,24 @@ while [[ $# -gt 0 ]]; do
 	        exit 1
 	    fi
             shift
+            ;;
+
+
+ 	# COMANDOS DE NODE.JS
+        --node|--npm)
+            shift
+            NODE_SCRIPT="$(dirname "$0")/build/NODE.JS/go-node.sh"
+            
+            if [ ! -f "$NODE_SCRIPT" ]; then
+                echo "❌ Node.js script not found: $NODE_SCRIPT"
+                exit 1
+            fi
+            
+            if [ $# -eq 0 ]; then
+                exec "$NODE_SCRIPT" help
+            else
+                exec "$NODE_SCRIPT" "$@"
+            fi
             ;;
 
         # 8. HELP AND INVALID
