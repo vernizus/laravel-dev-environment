@@ -433,10 +433,9 @@ while [[ $# -gt 0 ]]; do
                 display_help; exit 1
             fi
             ;;
+
         # 6. INITIALIZATION COMMANDS
         -i|--init)
-            # ----------------------------------------------------
-            # >>> ADD TO PATH <<<
             if [[ -n "$BASH_SOURCE" ]]; then
                 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
             else
@@ -468,7 +467,9 @@ while [[ $# -gt 0 ]]; do
 
             wait_for_mysql
 
-            execute_artisan migrate:fresh --seed
+	    execute_artisan migrate:fresh
+	    echo "🔄 Running seeders..."
+	    execute_artisan db:seed --class=DatabaseSeeder --force
 
             echo -e "\nALL DONE! Project '$PROJECT_NAME' is ready"
             echo "   → http://localhost:$SERVER_PORT"
