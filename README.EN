@@ -117,6 +117,13 @@ go -p api -s                 # Shell in API project
 4. `go -p my_project -M Product`  # Generate model
 5. `go -p my_project -m`          # Execute migrations
 
+# Duplicate User Error in Seeders
+If you encounter `Duplicate entry 'test@example.com'` errors when running migrations:
+
+# Automatic solution:
+go --fix-seeder
+go -m
+
 # Advanced Features
 
 > Intelligent Validation

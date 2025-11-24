@@ -117,6 +117,13 @@ go -p api -s                 # Shell en proyecto API
 4. `go -p mi_proyecto -M Product`  # Generar modelo
 5. `go -p mi_proyecto -m`          # Ejecutar migraciones
 
+# Error de Usuario Duplicado en Seeders
+Si encuentras errores de `Duplicate entry 'test@example.com'` al ejecutar migraciones:
+
+# Solución automática:
+go --fix-seeder
+go -m
+
 # Características Avanzadas
 
 > Validación Inteligente
