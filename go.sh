@@ -12,25 +12,26 @@ PROJECT_PATH="$BASE_DIR/$PROJECT_NAME"
 SERVER_PORT="${SERVER_PORT:-8000}"
 MYSQL_CONTAINER="${MYSQL_CONTAINER:-mariadb_dev}"
 
+# --------------------------------------------------
 # Docker Compose shortcut
+# --------------------------------------------------
 dc() {
     docker compose -f build/docker-compose.yml "$@"
 }
 
 export PROJECT_NAME CONTAINER_NAME PROJECT_PATH BASE_DIR
 
-
-# --- Helper Functions ---
-
+# ============================
+# * --- Helper Functions --- *
+# ============================
+#
 # --------------------------------------------------
-# Function: Fix common DatabaseSeeder issues (HOST COPY VERSION)
+# Function: Fix common DatabaseSeeder issues
 # --------------------------------------------------
 fix_database_seeder() {
     local PROJECT_PATH="$1"
-    
     echo "🔧 Checking and fixing DatabaseSeeder..."
-    
-    # Crear archivo temporal en el host
+    # Creating temporal file in host
     cat > /tmp/DatabaseSeeder.php << 'EOF'
 <?php
 
@@ -65,19 +66,16 @@ class DatabaseSeeder extends Seeder
 }
 EOF
 
-    # Copiar al contenedor
     docker cp /tmp/DatabaseSeeder.php $CONTAINER_NAME:"$PROJECT_PATH/database/seeders/DatabaseSeeder.php"
-    
-    # Asegurar permisos correctos
+
     docker exec $CONTAINER_NAME chown www-data:www-data "$PROJECT_PATH/database/seeders/DatabaseSeeder.php"
     docker exec $CONTAINER_NAME chmod 644 "$PROJECT_PATH/database/seeders/DatabaseSeeder.php"
-    
-    # Limpiar
+
     rm -f /tmp/DatabaseSeeder.php
-    
+
     echo "🔄 Regenerating autoload..."
     docker exec -w "$PROJECT_PATH" $CONTAINER_NAME composer dump-autoload
-    
+
     echo "✅ DatabaseSeeder fixed via host copy method"
 }
 
@@ -93,7 +91,6 @@ fix_seeder() {
     fix_database_seeder "$PROJECT_PATH"
     echo "✅ DatabaseSeeder fixed! Run 'go -m' to test migrations."
 }
-
 
 # --------------------------------------------------
 # Function: Update or add PROJECT_NAME and CONTAINER_NAME in build/.env
@@ -151,7 +148,9 @@ wait_for_laravel_ready() {
     echo "Laravel is up and running on http://localhost:$port"
 }
 
+# --------------------------------------------------
 # Function to update global context variables
+# --------------------------------------------------
 update_project_context() {
     local NEW_NAME=$1
     PROJECT_NAME="$NEW_NAME"
@@ -159,16 +158,23 @@ update_project_context() {
     echo "🎯 Context switched to project: $PROJECT_NAME"
 }
 
+# --------------------------------------------------
 # Function to execute artisan commands inside the container
+# --------------------------------------------------
 execute_artisan() {
     docker exec -w $PROJECT_PATH $CONTAINER_NAME php artisan "$@"
 }
 
+# --------------------------------------------------
 # Function to execute composer
+# --------------------------------------------------
 execute_composer() {
     docker exec -w $PROJECT_PATH $CONTAINER_NAME composer "$@"
 }
 
+# --------------------------------------------------
+# Function wait for mysql
+# --------------------------------------------------
 wait_for_mysql() {
     echo "⏳ Waiting for MariaDB to be ready..."
     until docker exec $MYSQL_CONTAINER ss -nlt | grep -q ':3306'; do
@@ -179,9 +185,9 @@ wait_for_mysql() {
     echo "✅ MariaDB is ready!"
 }
 
-# --- NEW: GIT CLONE & SYNC FUNCTION ---
-########################################
-
+# --------------------------------------------------
+# GIT CLONE & SYNC FUNCTION
+# --------------------------------------------------
 git_clone_setup() {
     local USER_REPO=$1   # Example: 'user/namerepo'
 
@@ -196,7 +202,7 @@ git_clone_setup() {
             return 1
             ;;
     esac
-    
+
     local REPO_URL="git@github.com:${USER_REPO}.git"
 
     # Host absolute path where the script is being executed
@@ -270,10 +276,9 @@ git_clone_setup() {
     echo "🎉 Clone and setup completed!"
 }
 
-########################################
-# --- END GIT CLONE & SYNC FUNCTION ---
-
-# New function to create a new Laravel project 
+# --------------------------------------------------
+# Function to create a new Laravel project
+# --------------------------------------------------
 create_new_project() {
     local NEW_PROJECT_NAME=$1
     local NEW_PROJECT_PATH="$BASE_DIR/$NEW_PROJECT_NAME"
@@ -314,7 +319,9 @@ create_new_project() {
     fi
 }
 
+# --------------------------------------------------
 # Function to start the development server in the background
+# --------------------------------------------------
 run_dev_server() {
     echo "🌐 Starting the development server for '$PROJECT_NAME' on port $SERVER_PORT (background)..."
     
@@ -329,7 +336,9 @@ run_dev_server() {
     fi
 }
 
+# --------------------------------------------------
 # Function to kill the development server
+# --------------------------------------------------
 kill_dev_server() {
     echo "🛑 Stopping the Laravel development server for '$PROJECT_NAME' on port $SERVER_PORT..."
     # Find and kill the specific 'php artisan serve' process by port
@@ -342,7 +351,9 @@ kill_dev_server() {
     fi
 }
 
+# --------------------------------------------------
 # Function validate existing project
+# --------------------------------------------------
 validate_project() {
     # Verify that the container is running
     if ! docker ps | grep -q "$CONTAINER_NAME"; then
@@ -375,7 +386,9 @@ validate_project() {
     return 0
 }
 
+# --------------------------------------------------
 # Display help message
+# --------------------------------------------------
 display_help() {
     echo "┌──────────────────────────────────────────────────────────────┐"
     echo "│                    🚀 LARAVEL DEV TOOL                       │"
@@ -430,17 +443,21 @@ display_help() {
     echo "└──────────────────────────────────────────────────────────────┘"
 }
 
-
+# --------------------------------------------------
 # Check if arguments were provided
+# --------------------------------------------------
 if [ $# -eq 0 ]; then
     echo "No arguments provided."
     display_help
     exit 1
 fi
 
+# ==================================================
 # Process arguments
+# ==================================================
 while [[ $# -gt 0 ]]; do
     case "$1" in
+
         # 1. SET PROJECT CONTEXT
         -p|--project)
             if [ -n "$2" ] && [[ "$2" != -* ]]; then
