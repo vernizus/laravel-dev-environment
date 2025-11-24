@@ -2,15 +2,15 @@ services:
 
   laravel:
     build: .
-    container_name: default_app
+    container_name: ${CONTAINER_NAME:-default_app}
     restart: unless-stopped
     ports:
       - "80:80"
       - "8000:8000"
       - "8080:8080"
       - "8008:8008"
-
-
+    environment:
+      - PROJECT_NAME_CONTAINER=${PROJECT_NAME:-default}
     networks:
       app_network:
         ipv4_address: 172.20.0.20

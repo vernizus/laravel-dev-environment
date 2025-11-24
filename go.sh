@@ -10,6 +10,62 @@ PROJECT_PATH="$BASE_DIR/$PROJECT_NAME"
 
 # --- Helper Functions ---
 
+# --------------------------------------------------
+# Función: actualiza o añade PROJECT_NAME y CONTAINER_NAME en build/.env
+# --------------------------------------------------
+update_env_project_names() {
+    local ENV_FILE="build/.env"
+
+    # Si el archivo no existe → error claro
+    if [[ ! -f "$ENV_FILE" ]]; then
+        echo "Error: No se encontró el archivo $ENV_FILE"
+        exit 1
+    fi
+
+    # 1. Preguntar nombre del proyecto
+    echo ""
+    echo "Configuración del nombre del proyecto"
+    echo "-----------------------------------------------"
+    read -p "Nombre del proyecto [actual: $(grep '^PROJECT_NAME=' "$ENV_FILE" | cut -d'=' -f2 || echo 'default') ] (Enter = mantener): " NEW_PROJECT
+    NEW_PROJECT=${NEW_PROJECT:-$(grep '^PROJECT_NAME=' "$ENV_FILE" | cut -d'=' -f2 || echo "default")}
+
+    # 2. Preguntar nombre del contenedor
+    read -p "Nombre del contenedor [actual: $(grep '^CONTAINER_NAME=' "$ENV_FILE" | cut -d'=' -f2 || echo 'default') ] (Enter = mantener): " NEW_CONTAINER
+    NEW_CONTAINER=${NEW_CONTAINER:-$(grep '^CONTAINER_NAME=' "$ENV_FILE" | cut -d'=' -f2 || echo "default")}
+
+    # 3. Actualizar o añadir las líneas con sed (MAGIA PURA)
+    sed -i \
+        -e "s|^PROJECT_NAME=.*|PROJECT_NAME=$NEW_PROJECT|" \
+        -e "s|^CONTAINER_NAME=.*|CONTAINER_NAME=$NEW_CONTAINER|" \
+        "$ENV_FILE"
+
+    # Si por algún motivo no existían → añadirlas al final
+    grep -q "^PROJECT_NAME=" "$ENV_FILE" || echo "PROJECT_NAME=$NEW_PROJECT" >> "$ENV_FILE"
+    grep -q "^CONTAINER_NAME=" "$ENV_FILE" || echo "CONTAINER_NAME=$NEW_CONTAINER" >> "$ENV_FILE"
+
+    echo ""
+    echo "Archivo build/.env actualizado:"
+    echo "   PROJECT_NAME=$NEW_PROJECT"
+    echo "   CONTAINER_NAME=$NEW_CONTAINER"
+    echo ""
+}
+
+# --------------------------------------------------
+# wait_for_laravel_ready()
+# Espera a que Laravel esté completamente listo (puerto 8000 escuchando)
+# --------------------------------------------------
+wait_for_laravel_ready() {
+    local container_name="${1:-$CONTAINER_NAME}"
+
+    echo "Waiting for Laravel to be fully ready (artisan serve on port 8000)..."
+    until docker exec "$container_name" ss -lnt 2>/dev/null | grep -q ':8000'; do
+        printf "."
+        sleep 1
+    done
+    echo ""
+    echo "Laravel is up and running on http://localhost:8000!"
+}
+
 # Function to update global context variables
 update_project_context() {
     local NEW_NAME=$1
@@ -310,6 +366,14 @@ while [[ $# -gt 0 ]]; do
                 echo "✨ 'go' alias created."
             fi
             # ----------------------------------------------------
+	    # >>> definir nombre del contenedor y del proyecto principal <<<
+	    update_env_project_names
+
+	    docker compose -f build/docker-compose.yml up -d --build --quiet-pull
+		# Esperar a que laravel cree el proyecto por defecto
+	    wait_for_laravel_ready
+	    # ----------------------------------------------------
+	    # >>> copiando archivo .env para configurar base de datos en laravel <<<
             echo "🔥 Executing initial setup for '$PROJECT_NAME': Migrate:Fresh and Seed."
             docker exec -w $BASE_DIR $CONTAINER_NAME cp .env $PROJECT_PATH
             wait_for_mysql

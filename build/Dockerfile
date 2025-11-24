@@ -23,6 +23,7 @@ RUN apt-get update && apt-get install -y \
     libzip-dev \
     libonig-dev \
     unzip \
+    iproute2 \
     --no-install-recommends && rm -rf /var/lib/apt/lists/*
 
 # 2. Install PHP extensions

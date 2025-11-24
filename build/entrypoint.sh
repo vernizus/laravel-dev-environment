@@ -7,7 +7,7 @@
 # 3. Ensuring the application key and clearing the cache.
 
 # Set the default name proyect
-PROJECT_NAME="default"
+PROJECT_NAME="${PROJECT_NAME_CONTAINER:-default}"
 # The final path of the project inside the container will be /var/www/html/default
 PROJECT_PATH="/var/www/html/$PROJECT_NAME"
 
