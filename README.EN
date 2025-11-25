@@ -2,9 +2,11 @@
 
 This implementation provides a complete and portable Laravel development environment using Docker Compose, designed to be easily integrated and shared through Git/GitHub.
 
-The setup is completely automated: from Laravel project creation to database configuration, migrations, and development server. The system is multi-project, allowing you to work with multiple applications simultaneously on different ports.
+The setup is fully automated: from Laravel project creation to database configuration, migrations, and development server. The system is multi-project, allowing work with multiple applications simultaneously on different ports.
 
-The Apache 000-default.conf file has been mapped in case you want to use the container's port 80 in some circumstances; you only need to edit the DocumentRoot path and you'll be able to see the site.
+The 000-default.conf Apache file has been mapped in case you want to use the container's port 80, you just need to edit the DocumentRoot path and the site will be accessible.
+
+Includes a dedicated Node.js container with preconfigured Vite and native hot-reload. All frontend (Vue, React, Tailwind, etc.) is automatically compiled and served at http://localhost:5173, with instant reload on every change within resources/. Thanks to the go --node command you can manage the entire frontend lifecycle (setup, dev, build, npm, logs, shell…) with the same simplicity as the rest of the stack, without installing Node or npm on your local machine.
 
 # Author
 
@@ -22,7 +24,7 @@ If you have suggestions, ideas, or encounter any issues, I'll be happy to review
 
 # Automated Initial Configuration
 
-## First Steps After Clone
+## First Steps after Clone
 
 # 1. Clone the Repository:
 git clone https://github.com/vernizus/laravel-dev-environment.git
@@ -38,7 +40,7 @@ chmod +x go.sh
 # Important note: The command . go.sh -i
 # (with the dot at the beginning) is mandatory because:
 
-    1. **Configures names**: Asks you for the project and container name
+    1. **Configures names**: Asks for project and container names
     2. **Prepares CLI**:
        - Adds the `go.sh` script to your current session's PATH
        - Creates the `go` alias to use the script from any subdirectory
@@ -60,17 +62,22 @@ Once the initial setup is completed, you can access the application:
 
 # Project Structure
 
-* `build/`: Container build directory
-* `build/Dockerfile`: Defines PHP/Composer image
-* `build/docker-compose.yml`: Defines laravel and DB (MariaDB) services
-* `build/000-default.conf`: Apache configuration for DocumentRoot
-* `build/entrypoint.sh`: Initializes Laravel project and dependencies
-* `build/.env`: Environment variables for Docker Compose
-* `go.sh`: Main script for all operations
-* `secret/.env`: Database credentials (DO NOT upload to Git)
-* `volumes/`: Persistent data for DB and Laravel projects
+build/
+├── .env                    → Global environment variables for the stack
+├── 000-default.conf        → Apache configuration (editable DocumentRoot)
+├── Dockerfile              → Base PHP 8.3 image + extensions + Composer
+├── entrypoint.sh           → Initializes Laravel, migrations and permissions
+├── docker-compose.yml      → Main services
+├── NODE.JS/                → Node.js + Vite module (completely independent)
+│   ├── .env                → Node container specific configuration
+│   ├── docker-compose.yml  → Defines node service (Vite dev server)
+│   └── go-node.sh          → go --node script (setup, dev, build, npm, logs…)
+go.sh                       → Main script: go --php, go --db, go --node, etc.
+secret/
+│ └── .env                  → Sensible credentials (never in Git)
+volumes/                    → Persistent data (DB, node_modules, projects)
 
-# Script go.sh
+# go.sh Script
 
 The go.sh script is your main tool for everything. Once you've executed go --init, you can simply use go from any project folder.
 
@@ -80,7 +87,7 @@ go [OPTIONS] [ARGUMENTS]
 # Always specify the project if working with multiple projects (unless using 'default')
 go -p <project_name> [command]
 
-# Project and Context Management
+# Project Management and Context
 go -p my_project              # Switch to project 'my_project'
 go --new my_app               # Create new Laravel application
 go --clone user/repo          # Clone and configure from GitHub automatically
@@ -99,10 +106,10 @@ go -p my_project --composer             # Install Composer dependencies
 
 # Access and Utilities
 go -p my_project -s           # Interactive shell in container
-go -h                          # Complete help with examples
+go -h                         # Complete help with examples
 
 # Clone existing project from GitHub:
-go --clone user/repository  # Clones, configures permissions and dependencies make sure to be inside the folder where the container's zero project was created then this will rewrite that folder with your project and have it ready
+go --clone user/repository  # Clones, configures permissions and dependencies make sure you are inside the folder where the container's zero project was created then this will overwrite that folder with your project and have it ready
 
 # Work with multiple projects:
 go -p api --port8080 -r      # API on port 8080
@@ -118,7 +125,7 @@ go -p api -s                 # Shell in API project
 5. `go -p my_project -m`          # Execute migrations
 
 # Duplicate User Error in Seeders
-If you encounter `Duplicate entry 'test@example.com'` errors when running migrations:
+If you encounter `Duplicate entry 'test@example.com'` errors when executing migrations:
 
 # Automatic solution:
 go --fix-seeder
@@ -152,3 +159,32 @@ Remember to keep the .gitignore file updated to add or remove directories/files 
 # . go.sh -i (The dot and space before go.sh -i are essential for
 # the go alias to be available in your current session and configure
 # the entire environment automatically.
+
+# Complete development environment with Vite + Hot Reload
+This environment includes a complete Node.js configuration perfectly integrated with Laravel.
+
+# Node.js container features
+Quick start
+
+# Complete Node.js configuration (setup + installation + startup)
+go --node setup
+
+# Start development with hot reload
+go --node dev
+
+# View real-time logs
+go --node logs
+
+# Key features
+
+> Hot Reload: Automatic rebuild when modifying files in resources/
+> Vite Integration: Modern build tool with official Laravel plugin
+> Dependency Management: Isolated npm environment inside container
+> Multi-project support: Independent Node.js containers per project
+> Real-time logs: Live development server output
+
+# Access points
+
+> Laravel Application → http://localhost:8000
+> Vite Development Server → http://localhost:5173
+> Hot Reload → Active for all changes in resources/

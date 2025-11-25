@@ -6,6 +6,8 @@ El setup está completamente automatizado: desde la creación del proyecto Larav
 
 Se ha mapeado el archivo 000-default.conf de Apache por si en alguna circunstancia se deseara usar el puerto 80 del contenedor, solo se debe editar la ruta del DocumentRoot y se podrá ver el sitio.
 
+Incluye un contenedor Node.js dedicado con Vite preconfigurado y hot-reload nativo. Todo el frontend (Vue, React, Tailwind, etc.) se compila y sirve automáticamente en http://localhost:5173, con recarga instantánea en cada cambio dentro de resources/. Gracias al comando go --node puedes gestionar todo el ciclo de vida del frontend (setup, dev, build, npm, logs, shell…) con la misma simplicidad que el resto del stack, sin instalar Node ni npm en tu máquina local.
+
 # Autor
 
 Este entorno ha sido creado y mantenido por:
@@ -60,15 +62,20 @@ Una vez completado el setup inicial, puedes acceder a la aplicación:
 
 # Estructura del Proyecto
 
-* `build/`: Directorio de construcción de los contenedores
-* `build/Dockerfile`: Define la imagen PHP/Composer
-* `build/docker-compose.yml`: Define los servicios laravel y DB (MariaDB)
-* `build/000-default.conf`: Configuración de Apache para DocumentRoot
-* `build/entrypoint.sh`: Inicializa proyecto Laravel y dependencias
-* `build/.env`: Variables de entorno para Docker Compose
-* `go.sh`: Script principal para todas las operaciones
-* `secret/.env`: Credenciales de base de datos (NO subir a Git)
-* `volumes/`: Datos persistentes de DB y proyectos Laravel
+build/
+├── .env                    → Variables de entorno globales del stack
+├── 000-default.conf        → Configuración Apache (DocumentRoot editable)
+├── Dockerfile              → Imagen base PHP 8.3 + extensiones + Composer
+├── entrypoint.sh           → Inicializa Laravel, migraciones y permisos
+├── docker-compose.yml      → Servicios principales 
+├── NODE.JS/                → Módulo Node.js + Vite (totalmente independiente)
+│   ├── .env                → Configuración específica del contenedor Node
+│   ├── docker-compose.yml  → Define el servicio node (Vite dev server)
+│   └── go-node.sh          → Script go --node (setup, dev, build, npm, logs…)
+go.sh                       → Script principal: go --php, go --db, go --node, etc.
+secret/
+│ └── .env                  → Credenciales sensibles (nunca en Git)
+volumes/                    → Datos persistentes (DB, node_modules, proyectos)
 
 # Script go.sh 
 
@@ -152,3 +159,32 @@ Recuerda mantener actualizado el archivo .gitignore para añadir o quitar direct
 # . go.sh -i (El punto y espacio antes de go.sh -i son esenciales para 
 # que el alias go esté disponible en tu sesión actual y configurar 
 # todo el entorno automáticamente.
+
+# Entorno completo de desarrollo con Vite + Hot Reload
+Este entorno incluye una configuración completa de Node.js perfectamente integrada con Laravel.
+
+# Características del contenedor Node.js
+Inicio rápido
+
+# Configuración completa de Node.js (configuración + instalación + arranque)
+go --node setup
+
+# Iniciar desarrollo con hot reload
+go --node dev
+
+# Ver logs en tiempo real
+go --node logs
+
+# Funcionalidades clave
+
+> Hot Reload: Reconstrucción automática al modificar archivos en resources/
+> Integración con Vite: Herramienta moderna de build con el plugin oficial de Laravel
+> Gestión de dependencias: Entorno npm aislado dentro del contenedor
+> Soporte multi-proyecto: Contenedores Node.js independientes por proyecto
+> Logs en tiempo real: Salida del servidor de desarrollo en vivo
+
+# Puntos de acceso
+
+> Aplicación Laravel → http://localhost:8000
+> Servidor de desarrollo Vite → http://localhost:5173
+> Hot Reload → Activo para todos los cambios en resources/
