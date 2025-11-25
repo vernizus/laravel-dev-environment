@@ -54,7 +54,15 @@ load_config() {
 
 # Function: Check if container is running
 is_running() {
-    docker ps --format 'table {{.Names}}' | grep -q "${CONTAINER_NAME}"
+    local port="${VITE_PORT:-5173}"
+
+    # Prioridad: lsof → ss → netstat → docker
+    lsof -i :$port -sTCP:LISTEN -t >/dev/null 2>&1 && return 0
+    ss -ltn 2>/dev/null | grep -q ":$port " && return 0
+    netstat -an 2>/dev/null | grep -q "\.$port .*LISTEN" && return 0
+
+    # Fallback final por si acaso
+    docker ps --filter "expose=$port" --format "{{.Names}}" | grep -q "_node"
 }
 
 # Function: Get container status
