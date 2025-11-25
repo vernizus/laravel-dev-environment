@@ -436,7 +436,7 @@ main() {
 
         # Development
         build)             node_build ;;
-
+		install)           node_install ;;
         # Configuration
         config)            node_config ;;
 
@@ -469,7 +469,8 @@ show_help() {
     echo -e "${GREEN}DEVELOPMENT:${NC}"
     echo "  build          Build for production"
     echo "  npm <cmd>      Run any npm command"
-    echo
+    echo "  install        Installing/updating Node.js depend  "
+	echo
     echo -e "${GREEN}CONFIGURATION:${NC}"
     echo "  config         Interactive configuration"
     echo
