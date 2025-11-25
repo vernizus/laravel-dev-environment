@@ -402,12 +402,75 @@ node_clean() {
     fi
 }
 
+####
+# Function: Install Breeze for existing projects (SIMPLIFIED)
+install_existing_breeze() {
+    log "Installing Breeze for existing project..."
+    
+    local MAIN_COMPOSE="$SCRIPT_DIR/../docker-compose.yml"
+    
+    # Ask for Breeze configuration BEFORE docker command
+    echo -e "${YELLOW}Which Breeze stack do you prefer?${NC}"
+    echo "  1) Blade with Alpine (recommended)"
+    echo "  2) React"
+    echo "  3) Vue"
+    read -p "  Option [1]: " stack_choice
+
+    case $stack_choice in
+        2) stack="react" ;;
+        3) stack="vue" ;;
+        *) stack="blade" ;;
+    esac
+
+    echo -e "${YELLOW}Do you want dark mode support?${NC}"
+    read -p "  (y/N): " dark_mode
+
+    if [[ $dark_mode =~ ^[Yy]$ ]]; then
+        dark_flag="--dark"
+    else
+        dark_flag=""
+    fi
+    
+    # 1. Install Breeze in Laravel container
+    log "Installing Breeze in Laravel container..."
+    if ! docker compose -f "$MAIN_COMPOSE" exec laravel bash -c "
+        cd /var/www/html/$PROJECT_NAME
+        composer require laravel/breeze --dev
+        php artisan breeze:install $stack $dark_flag --pest --no-interaction
+    "; then
+        error "Failed to install Breeze in Laravel container"
+        return 1
+    fi
+    
+    # 2. Install and run in Node container
+    log "Installing and running Node dependencies..."
+    docker compose -f "$COMPOSE_FILE" exec node sh -c "
+        npm install && npm run build && npm run dev
+    "
+    
+    log "✅ Breeze installed successfully"
+}
+
+
 # Function: Initial setup
 node_setup() {
     log "Running initial setup..."
     node_config
-    node_install
-    node_start
+
+    # Ask if existing project with Breeze
+    echo -e "\n${CYAN}🔍 EXISTING PROJECT DETECTION${NC}"
+    echo -e "${YELLOW}Is this an existing Laravel project that already had Breeze?${NC}"
+    read -p "  (y/N): " has_breeze
+    
+    if [[ $has_breeze =~ ^[Yy]$ ]]; then
+        log "Existing project detected - installing Breeze automatically..."
+        install_existing_breeze
+    else
+        log "New project - standard installation..."
+        node_install
+        node_start
+    fi
+
     node_status
 }
 
