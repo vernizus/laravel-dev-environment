@@ -12,6 +12,11 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV}
       - CHOKIDAR_USEPOLLING=${CHOKIDAR_USEPOLLING}
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
     command: sh -c "npm run dev"
     networks:
       build_app_network:
