@@ -1,5 +1,16 @@
 #!/bin/bash
 
+# =====================================================================
+#  NODE.JS + VITE DOCKER MODULE
+#  Part of: laravel-dev-environment[]
+#  https://github.com/vernizus/laravel-dev-environment
+#
+#  Author       : Alejandro Fernandes aka Vernizus Luna
+#  GitHub       : https://github.com/vernizus
+#  LinkedIn     : https://linkedin.com/in/gabriel-fernandes-998b64320
+#  Created      : 2025 – "I'm not a teapot" – but I do run on coffee
+# =====================================================================
+
 # Auto-load variables from build/.env on every execution
 if [[ -f "build/.env" ]]; then
     source "build/.env"

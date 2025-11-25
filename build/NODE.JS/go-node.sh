@@ -1,9 +1,15 @@
 #!/bin/bash
 
-# =============================================================================
-# NODE.JS DEVELOPMENT SCRIPT
-# Node.js container management for Laravel development
-# =============================================================================
+# =====================================================================
+#  NODE.JS + VITE DOCKER MODULE
+#  Part of: laravel-dev-environment[]
+#  https://github.com/vernizus/laravel-dev-environment
+#
+#  Author       : Alejandro Fernandes aka Vernizus Luna
+#  GitHub       : https://github.com/vernizus
+#  LinkedIn     : https://linkedin.com/in/gabriel-fernandes-998b64320
+#  Created      : 2025 – "I'm not a teapot" – but I do run on coffee
+# =====================================================================
 
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -18,9 +24,77 @@ BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
-# =============================================================================
+# =====================================================================
 # MAIN FUNCTIONS
-# =============================================================================
+# =====================================================================
+
+ensure_vite_config() {
+    load_config
+    log "Fixing vite.config.js inside container (bulletproof method)..."
+
+    if docker compose -f "$COMPOSE_FILE" exec node test -f /app/vite.config.js 2>/dev/null; then
+        docker compose -f "$COMPOSE_FILE" exec node sh -c "
+            if ! grep -q 'hmr.*host.*localhost' /app/vite.config.js 2>/dev/null; then
+                echo 'Patching vite.config.js with Docker fixes...'
+                cp /app/vite.config.js /app/vite.config.js.bak
+                cat > /app/vite.config.js << 'VITE'
+import { defineConfig } from 'vite';
+import laravel from 'laravel-vite-plugin';
+import tailwindcss from '@tailwindcss/vite';
+
+export default defineConfig({
+    plugins: [
+        laravel({
+            input: ['resources/css/app.css', 'resources/js/app.js'],
+            refresh: true,
+        }),
+        tailwindcss(),
+    ],
+    server: {
+        host: '0.0.0.0',
+        port: 5173,
+        strictPort: true,
+        hmr: { host: 'localhost' },
+        watch: { usePolling: false },
+    },
+});
+VITE
+                echo 'vite.config.js fixed!'
+            else
+                echo 'vite.config.js already perfect'
+            fi
+        "
+    else
+        docker compose -f "$COMPOSE_FILE" exec node sh -c "
+            echo 'Creating perfect vite.config.js...'
+            cat > /app/vite.config.js << 'VITE'
+import { defineConfig } from 'vite';
+import laravel from 'laravel-vite-plugin';
+import tailwindcss from '@tailwindcss/vite';
+
+export default defineConfig({
+    plugins: [
+        laravel({
+            input: ['resources/css/app.css', 'resources/js/app.js'],
+            refresh: true,
+        }),
+        tailwindcss(),
+    ],
+    server: {
+        host: '0.0.0.0',
+        port: 5173,
+        strictPort: true,
+        hmr: { host: 'localhost' },
+        watch: { usePolling: false },
+    },
+});
+VITE
+            echo 'vite.config.js created!'
+        "
+    fi
+
+    log "vite.config.js is now 100% perfect inside container"
+}
 
 # Function: Load configuration
 load_config() {
@@ -131,8 +205,8 @@ node_config() {
     # 5. Show summary
     echo -e "\n${GREEN}✅ CONFIGURATION UPDATED${NC}"
     echo -e "┌──────────────────────┬────────────────────────────┐"
-    echo -e "│ ${YELLOW}Project Name${NC}        │ $new_project │"
-    echo -e "│ ${YELLOW}Container Name${NC}      │ $new_container_full │"
+    echo -e "│ ${YELLOW}Project Name${NC}         │ $new_project │"
+    echo -e "│ ${YELLOW}Container Name${NC}       │ $new_container_full │"
     echo -e "└──────────────────────┴────────────────────────────┘"
 
     # 6. Verification
@@ -141,9 +215,9 @@ node_config() {
     grep -E "^(PROJECT_NAME|CONTAINER_NAME)=" "$ENV_FILE"
 }
 
-# =============================================================================
+# ===================================================================
 # MANAGEMENT FUNCTIONS
-# =============================================================================
+# ===================================================================
 
 # Function: Start container
 node_start() {
@@ -151,12 +225,15 @@ node_start() {
     log "Starting Node.js development server..."
 
     if docker compose -f "$COMPOSE_FILE" up -d; then
+	sleep 2
+	ensure_vite_config
+
         echo -e "\n${GREEN}🎨 VITE DEVELOPMENT SERVER STARTED${NC}"
         echo -e "┌──────────────────────┬────────────────────────────┐"
-        echo -e "│ ${YELLOW}Project${NC}             │ $PROJECT_NAME │"
-        echo -e "│ ${YELLOW}Container${NC}           │ $CONTAINER_NAME │"
-        echo -e "│ ${YELLOW}Dev Server${NC}          │ ${GREEN}http://localhost:5173${NC} │"
-        echo -e "│ ${YELLOW}Hot Reload${NC}          │ ${GREEN}Enabled${NC} │"
+        echo -e "│ ${YELLOW}Project${NC}              │ $PROJECT_NAME "
+        echo -e "│ ${YELLOW}Container${NC}            │ $CONTAINER_NAME "
+        echo -e "│ ${YELLOW}Dev Server${NC}           │ ${GREEN}http://localhost:5173${NC} "
+        echo -e "│ ${YELLOW}Hot Reload${NC}           │ ${GREEN}Enabled${NC} "
         echo -e "└──────────────────────┴────────────────────────────┘"
         echo -e "\n${CYAN}📝 Changes in resources/ will trigger automatic rebuild${NC}"
 
@@ -200,11 +277,11 @@ node_status() {
 
     echo -e "\n${CYAN}📊 NODE.JS CONTAINER STATUS${NC}"
     echo -e "┌──────────────────────┬────────────────────────────┐"
-    echo -e "│ ${YELLOW}Container${NC}            │ $(container_status) │"
-    echo -e "│ ${YELLOW}Project${NC}              │ $PROJECT_NAME │"
-    echo -e "│ ${YELLOW}Container Base${NC}       │ $container_base │"
-    echo -e "│ ${YELLOW}Container Full${NC}       │ $CONTAINER_NAME │"
-    echo -e "│ ${YELLOW}Vite Dev Server${NC}      │ http://localhost:5173 │"
+    echo -e "│ ${YELLOW}Container${NC}            │ $(container_status)"
+    echo -e "│ ${YELLOW}Project${NC}              │ $PROJECT_NAME              │"
+    echo -e "│ ${YELLOW}Container Base${NC}       │ $container_base      "
+    echo -e "│ ${YELLOW}Container Full${NC}       │ $CONTAINER_NAME      "
+    echo -e "│ ${YELLOW}Vite Dev Server${NC}      │ http://localhost:5173"
     echo -e "└──────────────────────┴────────────────────────────┘"
 
     if is_running; then
@@ -214,21 +291,33 @@ node_status() {
     fi
 }
 
-# =============================================================================
+# ===================================================================
 # DEVELOPMENT FUNCTIONS
-# =============================================================================
+# ===================================================================
 
 # Function: Install dependencies
 node_install() {
-    log "Installing Node.js dependencies..."
     load_config
+    log "Installing/updating Node.js dependencies..."
 
-    if docker compose -f "$COMPOSE_FILE" run --rm node sh -c "npm install"; then
-        log "Dependencies installed successfully"
+    docker compose -f "$COMPOSE_FILE" up -d --no-deps node > /dev/null 2>&1
+
+    if docker compose -f "$COMPOSE_FILE" exec node test -d /app/node_modules 2>/dev/null && \
+       docker compose -f "$COMPOSE_FILE" exec node npm install --quiet; then
+        log "Dependencies updated successfully (exec)"
+
+    elif docker compose -f "$COMPOSE_FILE" run --rm node npm install --quiet; then
+        log "Dependencies installed successfully (run)"
+
     else
-        error "Failed to install dependencies"
+        error "Failed to install Node.js dependencies"
+        error "Check logs: go --node logs"
         return 1
     fi
+
+    ensure_vite_config
+
+    log "Node.js environment ready"
 }
 
 # Function: Production build
@@ -245,9 +334,9 @@ node_build() {
     fi
 }
 
-# =============================================================================
+# =====================================================================
 # DEBUG FUNCTIONS
-# =============================================================================
+# =====================================================================
 
 # Function: View logs
 node_logs() {
@@ -292,13 +381,12 @@ node_npm() {
     load_config
 
     log "npm $*"
-    # No forced cd! We trust docker-compose.yml working_dir
     docker compose -f "$COMPOSE_FILE" exec node npm "$@"
 }
 
-# =============================================================================
+# =====================================================================
 # UTILITY FUNCTIONS
-# =============================================================================
+# =====================================================================
 
 # Function: Clean everything
 node_clean() {
@@ -323,18 +411,18 @@ node_setup() {
     node_status
 }
 
-# =============================================================================
+# =====================================================================
 # HELPERS
-# =============================================================================
+# =====================================================================
 
 log() { echo -e "${GREEN}✓${NC} $1"; }
 warn() { echo -e "${YELLOW}⚠${NC} $1"; }
 error() { echo -e "${RED}✗${NC} $1"; }
 info() { echo -e "${BLUE}ℹ${NC} $1"; }
 
-# =============================================================================
+# =====================================================================
 # MAIN MENU
-# =============================================================================
+# =====================================================================
 
 main() {
     load_config
