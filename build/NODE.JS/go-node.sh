@@ -404,10 +404,16 @@ node_clean() {
 
 ###################################################################
 
-# Function: Install Breeze for existing projects (SIMPLIFIED)
+# Function: Install Breeze for existing projects 
 install_existing_breeze() {
     log "Installing Breeze for existing project..."
     local MAIN_COMPOSE="$SCRIPT_DIR/../docker-compose.yml"
+
+    echo -e "${GREEN}🛡️  COMPLETE PEACE OF MIND - YOUR ROUTES ARE PROTECTED 🛡️${NC}"
+    echo -e "${YELLOW}Your current routes/web.php file will be 100% preserved.${NC}"
+    echo -e "${YELLOW}Breeze routes will be added at the end without modifying your existing code.${NC}"
+    echo ""
+    
     # Ask for Breeze configuration BEFORE docker command
     echo -e "${YELLOW}Which Breeze stack do you prefer?${NC}"
     echo " 1) Blade with Alpine (recommended)"
@@ -419,6 +425,7 @@ install_existing_breeze() {
         3) stack="vue" ;;
         *) stack="blade" ;;
     esac
+    
     echo -e "${YELLOW}Do you want dark mode support?${NC}"
     read -p " (y/N): " dark_mode
     if [[ $dark_mode =~ ^[Yy]$ ]]; then
@@ -426,67 +433,61 @@ install_existing_breeze() {
     else
         dark_flag=""
     fi
+
     # 1. Install Breeze in Laravel container
     log "Installing Breeze in Laravel container..."
     if ! docker compose -f "$MAIN_COMPOSE" exec laravel bash -c "
         cd /var/www/html/$PROJECT_NAME
-
-# 1. Backup de tus rutas originales (esto es sagrado)
+        
+        # 1. Backup your original routes
         cp routes/web.php routes/web.php.MY_CUSTOM
-
+        
+        # 2. Install Breeze
         composer require laravel/breeze --dev
         php artisan breeze:install $stack $dark_flag --pest --no-interaction
-
-# 3. Guardamos lo que Breeze generó
+        
+        # 3. Save what Breeze generated
         cp routes/web.php routes/web.php.BREEZE_GENERATED
-
-        # 4. Reconstruimos el archivo perfecto
-# 4. Reconstruimos el archivo perfecto
+        
+        # 4. Rebuild the perfect file
         {
+            # PHP opening
             echo '<?php'
             echo ''
-            echo '// ==================================================================='
-            echo '// TUS RUTAS PERSONALIZADAS (100% preservadas - \$(date))'
-            echo '// ==================================================================='
-            echo ''
+            echo '// ****** YOUR CUSTOM ROUTES ****** //'
 
-            # Tus rutas originales (sin el <?php inicial si lo tenía)
-            if head -1 routes/web.php.MY_CUSTOM 2>/dev/null | grep -q '<?php'; then
+            # Your original routes (without <?php if it had it)
+            if head -n 1 routes/web.php.MY_CUSTOM | grep -q '^<?php'; then
                 tail -n +2 routes/web.php.MY_CUSTOM
             else
                 cat routes/web.php.MY_CUSTOM
             fi
-
+    
             echo ''
-            echo '// ==================================================================='
-            echo '// RUTAS AÑADIDAS POR BREEZE (solo las que faltaban)'
-            echo '// ==================================================================='
+            echo '// ****** ROUTES ADDED BY BREEZE ****** // '
             echo ''
-
-            # Solo líneas que Breeze añadió y que tú NO tenías
-            grep -Fxv -f routes/web.php.MY_CUSTOM routes/web.php.BREEZE_GENERATED 2>/dev/null || true
-
-            echo ''
-            echo '// Fin del archivo - Breeze instalado sin perder NADA de lo tuyo'
-
+    
+            awk '/use App\\\\Http\\\\Controllers\\\\ProfileController;/,0' routes/web.php.BREEZE_GENERATED | \
+            grep -v 'use Illuminate\\\\Support\\\\Facades\\\\Route;' | \
+            grep -v 'Route::get.*welcome'
+    
         } > routes/web.php.new && mv routes/web.php.new routes/web.php
-
-        # Limpieza
+        
+        # Cleanup
         rm -f routes/web.php.MY_CUSTOM routes/web.php.BREEZE_GENERATED routes/web.php.new 2>/dev/null || true
-
-
-
-	chown 1000:1000 routes/web.php
+        chown 1000:1000 routes/web.php
 
     "; then
         error "Failed to install Breeze in Laravel container"
         return 1
     fi
+
     # 2. Install and run in Node container
     log "Installing and running Node dependencies..."
     docker compose -f "$COMPOSE_FILE" exec node sh -c "
         npm install && npm run build && npm run dev
     "
+    
     log "Breeze installed successfully"
 }
 
