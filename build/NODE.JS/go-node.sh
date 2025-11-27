@@ -243,6 +243,19 @@ node_start() {
     fi
 }
 
+node_start_B() {
+    load_config || return 1
+    log "Starting Node.js development server..."
+
+    if docker compose -f "$COMPOSE_FILE" up -d; then
+        sleep 2
+        ensure_vite_config
+    else
+        error "Failed to start Node.js container"
+        return 1
+    fi
+}
+
 # Function: Stop container
 node_stop() {
     log "Stopping Node.js container..."
@@ -500,6 +513,7 @@ node_setup() {
     
     if [[ $has_breeze =~ ^[Yy]$ ]]; then
         log "Existing project detected - installing Breeze automatically..."
+        node_start_B
 	node_install
         install_existing_breeze
     else
