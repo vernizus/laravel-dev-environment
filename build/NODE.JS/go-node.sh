@@ -495,7 +495,7 @@ install_existing_breeze() {
     # 2. Install and run in Node container
     log "Installing and running Node dependencies..."
     docker compose -f "$COMPOSE_FILE" exec node sh -c "
-	npm run build && npm run dev
+	npm install && npm run build && npm run dev
     "
     
     log "Breeze installed successfully"
