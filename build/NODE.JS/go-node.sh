@@ -482,7 +482,7 @@ install_existing_breeze() {
     # 2. Install and run in Node container
     log "Installing and running Node dependencies..."
     docker compose -f "$COMPOSE_FILE" exec node sh -c "
-        npm install && npm run build && npm run dev
+	npm run build && npm run dev
     "
     
     log "Breeze installed successfully"
@@ -501,7 +501,6 @@ node_setup() {
     if [[ $has_breeze =~ ^[Yy]$ ]]; then
         log "Existing project detected - installing Breeze automatically..."
 	node_install
-        node_start
         install_existing_breeze
     else
         log "New project - standard installation..."
