@@ -503,6 +503,8 @@ node_setup() {
     
     if [[ $has_breeze =~ ^[Yy]$ ]]; then
         log "Existing project detected - installing Breeze automatically..."
+	node_install
+        node_start
         install_existing_breeze
     else
         log "New project - standard installation..."
