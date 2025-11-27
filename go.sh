@@ -199,35 +199,140 @@ wait_for_mysql() {
 # --------------------------------------------------
 # GIT CLONE & SYNC FUNCTION
 # --------------------------------------------------
+
+select_project_directory() {
+    local SCRIPT_DIR TARGET_DIR
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    local BASE_DIR="$SCRIPT_DIR/volumes/laravel"
+
+    mkdir -p "$BASE_DIR"
+
+    local PROJECTS=()
+    local dir
+    shopt -s nullglob
+    for dir in "$BASE_DIR"/*/; do
+        PROJECTS+=("$(basename "$dir")")
+    done
+    shopt -u nullglob
+    local NUM_PROJECTS=${#PROJECTS[@]}
+
+    echo "" >&2
+    echo "---" >&2
+
+    echo "🤔 What do you want to do?" >&2
+
+    local MAIN_OPTIONS=("Clone into existing project" "Create new project" "Custom path" "Cancel")
+    local ACTION_CHOICE
+
+    COLUMNS=1
+    PS3="Select an option: "
+
+    select ACTION_CHOICE in "${MAIN_OPTIONS[@]}"; do
+        if [ -z "$ACTION_CHOICE" ]; then
+            echo "❌ Invalid option. Please try again." >&2
+            continue
+        fi
+
+        case "$ACTION_CHOICE" in
+            "Clone into existing project")
+                if [ $NUM_PROJECTS -eq 0 ]; then
+                    echo "ℹ️ No existing projects to select. Please create a new one or use a custom path." >&2
+                    continue
+                fi
+
+                echo "" >&2
+                echo "📂 Existing Projects (${NUM_PROJECTS}):" >&2
+                PS3="Select the target project: "
+                select SELECTED_PROJECT in "${PROJECTS[@]}"; do
+                    if [ -z "$SELECTED_PROJECT" ]; then
+                        echo "❌ Invalid option. Please try again." >&2
+                        continue
+                    fi
+                    TARGET_DIR="$BASE_DIR/$SELECTED_PROJECT"
+                    echo "" >&2
+                    echo "✅ Selected for cloning: $SELECTED_PROJECT" >&2
+                    break 2
+                done
+                ;;
+
+	    "Create new project")
+                read -r -p "New project name: " NEW_PROJECT_NAME
+                
+                if [ -z "$NEW_PROJECT_NAME" ]; then
+                    echo "❌ Project name cannot be empty." >&2
+                    continue
+                fi
+                
+                TARGET_DIR="$BASE_DIR/$NEW_PROJECT_NAME"
+                break
+                ;;
+
+	    "Custom path")
+                read -r -p "Custom path (absolute or relative, e.g., /full/path/to/app or ../other/app): " TARGET_DIR
+                if [ -z "$TARGET_DIR" ]; then
+                    echo "❌ Path cannot be empty." >&2
+                    continue
+                fi
+                break
+                ;;
+
+            "Cancel")
+                echo "🛑 Operation cancelled." >&2
+                return 1
+                ;;
+        esac
+    done
+
+    if [ -n "$TARGET_DIR" ]; then
+        if [ ! -d "$TARGET_DIR" ]; then
+            mkdir -p "$TARGET_DIR"
+            echo "✅ Directory created: $TARGET_DIR" >&2
+        fi
+        echo "$TARGET_DIR"
+    fi
+}
+
 git_clone_setup() {
     local USER_REPO=$1   # Example: 'user/namerepo'
 
-    echo "⚠️ You are about to clone/sync a Laravel project."
-    read -p "Are you sure you are inside the target project directory? (y/N): " CONFIRM
+    if [ -z "$USER_REPO" ]; then
+        echo "❌ Error: You must specify user/repository for cloning."
+        echo "Example: $0 --clone user/repositori"
+        return 1
+    fi
+
+    local HOST_PROJECT_DIR
+    HOST_PROJECT_DIR=$(select_project_directory)
+    
+    if [ $? -ne 0 ] || [ -z "$HOST_PROJECT_DIR" ]; then
+        echo "❌ Could not determine target directory."
+        return 1
+    fi
+
+    echo "🔗 Repository: git@github.com:$USER_REPO.git"
+    echo ""
+
+    read -p "Are you sure you want to proceed? (y/N): " CONFIRM
     case "$CONFIRM" in
         [yY][eE][sS]|[yY])
             echo "✅ Proceeding..."
             ;;
         *)
-            echo "❌ Aborted. Please navigate to the correct project folder."
+            echo "❌ Aborted."
             return 1
             ;;
     esac
 
     local REPO_URL="git@github.com:${USER_REPO}.git"
 
-    # Host absolute path where the script is being executed
-    local HOST_PROJECT_DIR="$PWD"
-
-    if [ -z "$USER_REPO" ]; then
-        echo "❌ Error: You must specify user/repository for cloning."
-        echo "Example: $0 --clone user/repo"
-        exit 1
-    fi
-
     echo "---------------------------------------------------------"
     echo "🌐 Starting Git clone and synchronization process"
     echo "---------------------------------------------------------"
+
+    cd "$HOST_PROJECT_DIR" || {
+        echo "❌ Failed to navigate to target directory: $HOST_PROJECT_DIR"
+        return 1
+    }
 
     # 1. Fix permissions BEFORE touching .git
     echo "🔑 Fixing file ownership for the current directory..."
