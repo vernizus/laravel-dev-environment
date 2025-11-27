@@ -237,9 +237,6 @@ node_start() {
         echo -e "└──────────────────────┴────────────────────────────┘"
         echo -e "\n${CYAN}📝 Changes in resources/ will trigger automatic rebuild${NC}"
 
-        # Show logs automatically
-        echo -e "\n${YELLOW}Tip: press Ctrl+C to stop watching logs${NC}"
-        docker compose -f "$COMPOSE_FILE" logs -f node
     else
         error "Failed to start Node.js container"
         return 1
