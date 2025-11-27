@@ -577,9 +577,13 @@ while [[ $# -gt 0 ]]; do
 	    echo "🔄 Running seeders..."
 	    execute_artisan db:seed --class=DatabaseSeeder --force
 
+	    # Set execute permissions for Node.js script for future use
+	    chmod +x build/NODE.JS/go-node.sh
+
             echo -e "\nALL DONE! Project '$PROJECT_NAME' is ready"
             echo "   → http://localhost:$SERVER_PORT"
             echo "   → Container: $CONTAINER_NAME"
+	    echo "   → Node.js tools: go --node help"
             shift
             ;;
 
