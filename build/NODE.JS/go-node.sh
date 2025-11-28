@@ -415,15 +415,15 @@ node_clean() {
 ###################################################################
 
 # Function: Install Breeze for existing projects 
+
 install_existing_breeze() {
     log "Installing Breeze for existing project..."
     local MAIN_COMPOSE="$SCRIPT_DIR/../docker-compose.yml"
 
     echo -e "${GREEN}🛡️  COMPLETE PEACE OF MIND - YOUR ROUTES ARE PROTECTED 🛡️${NC}"
-    echo -e "${YELLOW}Your current routes/web.php file will be 100% preserved.${NC}"
-    echo -e "${YELLOW}Breeze routes will be added at the end without modifying your existing code.${NC}"
+    echo -e "${YELLOW}Your current files will be 100% preserved.${NC}"
     echo ""
-    
+
     # Ask for Breeze configuration BEFORE docker command
     echo -e "${YELLOW}Which Breeze stack do you prefer?${NC}"
     echo " 1) Blade with Alpine (recommended)"
@@ -435,7 +435,7 @@ install_existing_breeze() {
         3) stack="vue" ;;
         *) stack="blade" ;;
     esac
-    
+
     echo -e "${YELLOW}Do you want dark mode support?${NC}"
     read -p " (y/N): " dark_mode
     if [[ $dark_mode =~ ^[Yy]$ ]]; then
@@ -444,48 +444,184 @@ install_existing_breeze() {
         dark_flag=""
     fi
 
+    # Ask if user wants to modify existing files
+    echo -e "${YELLOW}Do you want Breeze to modify your existing layout and navigation files?${NC}"
+    echo -e "${YELLOW}If not, Breeze files will be generated but your existing files won't be modified${NC}"
+    read -p " (Y/n): " modify_files
+    if [[ $modify_files =~ ^[Nn]$ ]]; then
+        preserve_files=true
+        echo -e "${YELLOW}Your existing files will be preserved. Breeze components will be available separately.${NC}"
+        
+        # Ask if user wants to save ANY Breeze files
+        echo -e "${YELLOW}Do you want to save Breeze generated files for reference?${NC}"
+        echo -e "${YELLOW}This includes routes, layouts, and navigation files${NC}"
+        read -p " (Y/n): " save_breeze_files
+        if [[ $save_breeze_files =~ ^[Nn]$ ]]; then
+            save_any_breeze_files=false
+            echo -e "${YELLOW}No Breeze files will be saved. Only installation will be performed.${NC}"
+        else
+            save_any_breeze_files=true
+            echo -e "${YELLOW}Breeze files will be saved with .breeze extension${NC}"
+            
+            # Only ask about routes if user wants to save files
+            echo -e "${YELLOW}Do you want to save Breeze routes in a separate file?${NC}"
+            read -p " (Y/n): " save_routes
+            if [[ $save_routes =~ ^[Nn]$ ]]; then
+                save_breeze_routes=false
+                echo -e "${YELLOW}Breeze routes will not be saved separately.${NC}"
+            else
+                save_breeze_routes=true
+                echo -e "${YELLOW}Breeze routes will be saved in routes/breeze.php${NC}"
+            fi
+        fi
+    else
+        preserve_files=false
+        save_any_breeze_files=true
+        save_breeze_routes=true
+        echo -e "${YELLOW}Breeze will modify your layout and navigation files.${NC}"
+    fi
+
     # 1. Install Breeze in Laravel container
     log "Installing Breeze in Laravel container..."
     if ! docker compose -f "$MAIN_COMPOSE" exec laravel bash -c "
         cd /var/www/html/$PROJECT_NAME
-        
-        # 1. Backup your original routes
+
+        # 1. Backup your original files
         cp routes/web.php routes/web.php.MY_CUSTOM
-        
+        if [ -f resources/views/layouts/app.blade.php ]; then
+            cp resources/views/layouts/app.blade.php resources/views/layouts/app.blade.php.MY_CUSTOM
+        fi
+        if [ -f resources/views/layouts/navigation.blade.php ]; then
+            cp resources/views/layouts/navigation.blade.php resources/views/layouts/navigation.blade.php.MY_CUSTOM
+        fi
+        if [ -f resources/views/layouts/guest.blade.php ]; then
+            cp resources/views/layouts/guest.blade.php resources/views/layouts/guest.blade.php.MY_CUSTOM
+        fi
+        if [ -f resources/views/dashboard.blade.php ]; then
+            cp resources/views/dashboard.blade.php resources/views/dashboard.blade.php.MY_CUSTOM
+        fi
+
         # 2. Install Breeze
         composer require laravel/breeze --dev
         php artisan breeze:install $stack $dark_flag --pest --no-interaction
-        
+
         # 3. Save what Breeze generated
         cp routes/web.php routes/web.php.BREEZE_GENERATED
-        
-        # 4. Rebuild the perfect file
-        {
-            # PHP opening
-            echo '<?php'
-            echo ''
-            echo '// ****** YOUR CUSTOM ROUTES ****** //'
+        if [ -f resources/views/layouts/app.blade.php ]; then
+            cp resources/views/layouts/app.blade.php resources/views/layouts/app.blade.php.BREEZE_GENERATED
+        fi
+        if [ -f resources/views/layouts/navigation.blade.php ]; then
+            cp resources/views/layouts/navigation.blade.php resources/views/layouts/navigation.blade.php.BREEZE_GENERATED
+        fi
+        if [ -f resources/views/layouts/guest.blade.php ]; then
+            cp resources/views/layouts/guest.blade.php resources/views/layouts/guest.blade.php.BREEZE_GENERATED
+        fi
+        if [ -f resources/views/dashboard.blade.php ]; then
+            cp resources/views/dashboard.blade.php resources/views/dashboard.blade.php.BREEZE_GENERATED
+        fi
 
-            # Your original routes (without <?php if it had it)
-            if head -n 1 routes/web.php.MY_CUSTOM | grep -q '^<?php'; then
-                tail -n +2 routes/web.php.MY_CUSTOM
+        # 4. Process files based on user choice
+        if [ \"$preserve_files\" = \"false\" ]; then
+            # User wants Breeze to modify files - merge routes only
+            {
+                # PHP opening
+                echo '<?php'
+                echo ''
+                echo '// ****** YOUR CUSTOM ROUTES ****** //'
+
+                # Your original routes (without <?php if it had it)
+                if head -n 1 routes/web.php.MY_CUSTOM | grep -q '^<?php'; then
+                    tail -n +2 routes/web.php.MY_CUSTOM
+                else
+                    cat routes/web.php.MY_CUSTOM
+                fi
+
+                echo ''
+                echo '// ****** ROUTES ADDED BY BREEZE ****** // '
+                echo ''
+
+                awk '/use App\\\\Http\\\\Controllers\\\\ProfileController;/,0' routes/web.php.BREEZE_GENERATED | \
+                grep -v 'use Illuminate\\\\Support\\\\Facades\\\\Route;' | \
+                grep -v 'Route::get.*welcome'
+
+            } > routes/web.php.new && mv routes/web.php.new routes/web.php
+            
+            # Other files (app.blade.php, navigation.blade.php, etc.) remain modified by Breeze
+            echo \"Files modified by Breeze - layout and navigation updated\"
+            
+        else
+            # User wants to preserve original files
+            if [ \"$save_any_breeze_files\" = \"true\" ]; then
+                # Save Breeze routes if requested
+                if [ \"$save_breeze_routes\" = \"true\" ]; then
+                    {
+                        echo '<?php'
+                        echo ''
+                        echo '// ****** BREEZE ROUTES ****** //'
+                        echo '// These routes can be included in your web.php if needed //'
+                        echo '// Use: include(__DIR__ . \"/breeze.php\"); //'
+                        echo ''
+                        
+                        awk '/use App\\\\Http\\\\Controllers\\\\ProfileController;/,0' routes/web.php.BREEZE_GENERATED | \
+                        grep -v 'use Illuminate\\\\Support\\\\Facades\\\\Route;' | \
+                        grep -v 'Route::get.*welcome'
+                        
+                    } > routes/breeze.php
+                    echo \"Breeze routes saved to routes/breeze.php\"
+                else
+                    echo \"Breeze routes were not saved (as requested)\"
+                fi
+
+                # Create backup copies of Breeze-generated files with .breeze extension
+                if [ -f resources/views/layouts/app.blade.php.BREEZE_GENERATED ]; then
+                    cp resources/views/layouts/app.blade.php.BREEZE_GENERATED resources/views/layouts/app.blade.php.breeze
+                    echo \"Breeze layout saved as app.blade.php.breeze\"
+                fi
+                if [ -f resources/views/layouts/navigation.blade.php.BREEZE_GENERATED ]; then
+                    cp resources/views/layouts/navigation.blade.php.BREEZE_GENERATED resources/views/layouts/navigation.blade.php.breeze
+                    echo \"Breeze navigation saved as navigation.blade.php.breeze\"
+                fi
+                if [ -f resources/views/layouts/guest.blade.php.BREEZE_GENERATED ]; then
+                    cp resources/views/layouts/guest.blade.php.BREEZE_GENERATED resources/views/layouts/guest.blade.php.breeze
+                    echo \"Breeze guest layout saved as guest.blade.php.breeze\"
+                fi
+                if [ -f resources/views/dashboard.blade.php.BREEZE_GENERATED ]; then
+                    cp resources/views/dashboard.blade.php.BREEZE_GENERATED resources/views/dashboard.blade.php.breeze
+                    echo \"Breeze dashboard saved as dashboard.blade.php.breeze\"
+                fi
             else
-                cat routes/web.php.MY_CUSTOM
+                echo \"No Breeze files were saved (as requested)\"
             fi
-    
-            echo ''
-            echo '// ****** ROUTES ADDED BY BREEZE ****** // '
-            echo ''
-    
-            awk '/use App\\\\Http\\\\Controllers\\\\ProfileController;/,0' routes/web.php.BREEZE_GENERATED | \
-            grep -v 'use Illuminate\\\\Support\\\\Facades\\\\Route;' | \
-            grep -v 'Route::get.*welcome'
-    
-        } > routes/web.php.new && mv routes/web.php.new routes/web.php
-        
-        # Cleanup
+
+            # Always restore original files when preserve_files=true
+            cp routes/web.php.MY_CUSTOM routes/web.php
+            
+            if [ -f resources/views/layouts/app.blade.php.MY_CUSTOM ]; then
+                cp resources/views/layouts/app.blade.php.MY_CUSTOM resources/views/layouts/app.blade.php
+            fi
+            
+            if [ -f resources/views/layouts/navigation.blade.php.MY_CUSTOM ]; then
+                cp resources/views/layouts/navigation.blade.php.MY_CUSTOM resources/views/layouts/navigation.blade.php
+            fi
+            
+            if [ -f resources/views/layouts/guest.blade.php.MY_CUSTOM ]; then
+                cp resources/views/layouts/guest.blade.php.MY_CUSTOM resources/views/layouts/guest.blade.php
+            fi
+            
+            if [ -f resources/views/dashboard.blade.php.MY_CUSTOM ]; then
+                cp resources/views/dashboard.blade.php.MY_CUSTOM resources/views/dashboard.blade.php
+            fi
+            
+            echo \"Original files preserved successfully\"
+        fi
+
+        # Cleanup temporary backup files
         rm -f routes/web.php.MY_CUSTOM routes/web.php.BREEZE_GENERATED routes/web.php.new 2>/dev/null || true
-        chown 1000:1000 routes/web.php
+        rm -f resources/views/layouts/*.MY_CUSTOM resources/views/layouts/*.BREEZE_GENERATED 2>/dev/null || true
+        rm -f resources/views/*.MY_CUSTOM resources/views/*.BREEZE_GENERATED 2>/dev/null || true
+        
+        # Set proper permissions
+        chown -R 1000:1000 routes/ resources/views/
 
     "; then
         error "Failed to install Breeze in Laravel container"
@@ -495,10 +631,24 @@ install_existing_breeze() {
     # 2. Install and run in Node container
     log "Installing and running Node dependencies..."
     docker compose -f "$COMPOSE_FILE" exec node sh -c "
-	npm install && npm run build && npm run dev
+        npm install && npm run build && npm run dev
     "
-    
-    log "Breeze installed successfully"
+
+    # Show final message based on user choice
+    if [ \"$preserve_files\" = \"false\" ]; then
+        log "Breeze installed successfully with routes and layouts modified"
+    else
+        log "Breeze installed successfully. Original files preserved."
+        echo -e "${GREEN}✓ Your original files were preserved${NC}"
+        if [ \"$save_any_breeze_files\" = \"true\" ]; then
+            if [ \"$save_breeze_routes\" = \"true\" ]; then
+                echo -e "${YELLOW}Breeze routes are available in: routes/breeze.php${NC}"
+            fi
+            echo -e "${YELLOW}Breeze layout files are available with .breeze extension in resources/views/layouts/${NC}"
+        else
+            echo -e "${YELLOW}No Breeze files were saved (as requested)${NC}"
+        fi
+    fi
 }
 
 # Function: Initial setup
