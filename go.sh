@@ -46,6 +46,15 @@ fix_permissions() {
     docker exec -w /var/www/html/ $CONTAINER_NAME chown -R $user_id_group_id "$PROJECT_PATH"
 }
 
+# --------------------------------------------------
+# Function to check if a composer package is installed inside the container
+# Returns 0 if installed, non-zero otherwise
+# --------------------------------------------------
+is_package_installed() {
+    local package_name="$1"
+    docker exec -w $PROJECT_PATH $CONTAINER_NAME grep -q "\"$package_name\"" composer.lock 2>/dev/null
+    return $? 
+}
 
 # --------------------------------------------------
 # Function: Fix common DatabaseSeeder issues
@@ -670,17 +679,18 @@ while [[ $# -gt 0 ]]; do
             if [[ -n "$BASH_SOURCE" ]]; then
                 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
             else
-                REPO_ROOT="$(dirname "$(readlink -f "$0")")" 
+                REPO_ROOT="$(dirname "$(readlink -f "$0")")"
             fi
 
-            # Add to PATH if it doesn't already exist
             if [[ ":$PATH:" != *":$REPO_ROOT:"* ]]; then
                 export PATH="$REPO_ROOT:$PATH"
-                echo "✅ 'go.sh' directory ($REPO_ROOT) added to \$PATH for this session."
-                # Add the 'go' alias
+                echo "✅ 'go.sh' directory ($REPO_ROOT) added to \$PATH for the current session."
                 alias go='go.sh'
                 echo "✨ 'go' alias created."
+
             fi
+
+
 	    update_env_project_names
 
             source build/.env 2>/dev/null || true
@@ -712,17 +722,19 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
 
-        -m|--migrate)
-	    if validate_project; then
-	        echo "🔄 Executing migrations and seeders for '$PROJECT_NAME' (artisan migrate --seed)."
-	        execute_artisan migrate --seed
-	    else
-	        exit 1
-	    fi
-            shift
+	-m|--migrate)
+            if validate_project; then
+                echo "🔄 Executing migrations and seeders for '$PROJECT_NAME'."
+                
+                execute_artisan migrate --seed
+            else
+                exit 1
+            fi
+            
+            shift 
             ;;
         
-        # MAINTENANCE COMMANDS (Clearing cache, composer install, shell access)
+        # MAINTENANCE COMMANDS
         -c|--clear)
 	    if validate_project; then
 	        echo "🧹 Clearing all Laravel cache in '$PROJECT_NAME'..."
@@ -762,9 +774,8 @@ while [[ $# -gt 0 ]]; do
             ;;
 
 
-# --------------------------------------------------
-# 7. CODE GENERATION & MAINTENANCE
-# --------------------------------------------------
+	# CODE GENERATION & MAINTENANCE
+
         -M|--make-MMC)
             if ! validate_project; then
                 exit 1
@@ -793,11 +804,11 @@ while [[ $# -gt 0 ]]; do
                 echo "Creating model: $model (with migration, controller, resource)"
                 execute_artisan make:model "$model" -mcr
             done
-            
+
             fix_permissions
             ;;
 
-        -L|--make-lw)
+	-L|--make-lw)
             if ! validate_project; then
                 exit 1
             fi
@@ -806,6 +817,28 @@ while [[ $# -gt 0 ]]; do
                 echo "Error: Must provide a name for the Livewire component (e.g., admin.approvals.SolicitationApprovalTable)"
                 echo "Usage: go -L admin.approvals.SolicitationApprovalTable"
                 exit 1
+            fi
+
+            if ! is_package_installed "livewire/livewire"; then
+                echo "🚨 Livewire package not found in this project."
+                echo "Do you want to install it now? (composer require livewire/livewire)"
+                read -r -p "Type 'yes' or 'y' to continue: " response
+
+                response=$(echo "$response" | tr '[:upper:]' '[:lower:]') 
+
+                if [[ "$response" =~ ^(yes|y)$ ]]; then
+                    echo "📦 Installing Livewire..."
+                    execute_composer require livewire/livewire --with-all-dependencies
+
+                    if [ $? -ne 0 ]; then
+                        echo "❌ ERROR: Livewire installation failed. Aborting component creation."
+                        exit 1
+                    fi
+                    echo "✅ Livewire installed successfully."
+                else
+                    echo "Installation declined. Aborting component creation."
+                    exit 1
+                fi
             fi
 
             shift # Remove -L or --make-lw
@@ -879,7 +912,6 @@ while [[ $# -gt 0 ]]; do
 
             shift # Remove -a or --artisan
 
-            # Check if a command was provided after --artisan
             if [[ $# -eq 0 ]] || [[ "$1" == -* ]]; then
                 echo "Error: Must provide an Artisan command (e.g., go -a queue:work --tries=3)"
                 exit 1
@@ -888,14 +920,12 @@ while [[ $# -gt 0 ]]; do
             artisan_command="$@"
             echo "⚙️ Executing Artisan command: php artisan $artisan_command..."
 
-            # Execute the Artisan command with all its arguments
             execute_artisan $artisan_command
-            
+
             shift $#
             ;;
 
-
- 	# COMANDOS DE NODE.JS
+	# Node.js command
         --node|--npm)
             shift
             NODE_SCRIPT="$(dirname "$0")/build/NODE.JS/go-node.sh"
