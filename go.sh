@@ -36,6 +36,17 @@ export PROJECT_NAME CONTAINER_NAME PROJECT_PATH BASE_DIR
 # * --- Helper Functions --- *
 # ============================
 #
+
+# --------------------------------------------------
+# Function to fix permissions for the host user
+# --------------------------------------------------
+fix_permissions() {
+    local user_id_group_id="$UID:$(id -g)"
+    echo "🔐 Fixing permissions (chown $user_id_group_id) for $PROJECT_PATH..."
+    docker exec -w /var/www/html/ $CONTAINER_NAME chown -R $user_id_group_id "$PROJECT_PATH"
+}
+
+
 # --------------------------------------------------
 # Function: Fix common DatabaseSeeder issues
 # --------------------------------------------------
@@ -539,6 +550,15 @@ display_help() {
     echo "│ CODE GENERATION & MAINTENANCE                                │"
     echo "│  -M, --make-MMC <models> Create Model+Migration+Controller   │"
     echo "│                         (Multiple models supported)          │"
+    echo "│  -L, --make-lw <name>       Create Livewire component        │"
+    echo "│                         (e.g., admin.CompTable)              │"
+    echo "│  -C, --make-ctrl <name>     Create Resource Controller       │"
+    echo "│                         (e.g., Admin/Product)                │"
+    echo "│  --make-seeder <name>   Create Seeder file                   │"
+    echo "│  -S, --seed <name>          Run a specific Seeder            │"
+    echo "│                         (e.g., WorkerSeeder)                 │"
+    echo "│  -a, --artisan <command>    Execute any artisan command      │"
+    echo "│                         (e.g., queue:work)                   │"
     echo "│  --fix-seeder           Fixes DatabaseSeeder to prevent      │"
     echo "│                         duplicate user errors.               │"
     echo "│  -c, --clear            Clear all cache (cache, route, etc.) │"
@@ -702,7 +722,7 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         
-        # 7. MAINTENANCE COMMANDS (Clearing cache, composer install, shell access)
+        # MAINTENANCE COMMANDS (Clearing cache, composer install, shell access)
         -c|--clear)
 	    if validate_project; then
 	        echo "🧹 Clearing all Laravel cache in '$PROJECT_NAME'..."
@@ -721,6 +741,30 @@ while [[ $# -gt 0 ]]; do
 	    shift
 	    ;;
 
+        --composer)
+	    if validate_project; then
+	        echo "📦 Executing composer install in '$PROJECT_NAME'..."
+	        execute_composer install
+	    else
+	        exit 1
+	    fi
+            shift
+            ;;
+
+        -s| --shell)
+	    if validate_project; then
+	        echo "🖥️  Entering the container shell at path '$PROJECT_PATH'..."
+	        docker exec -w $PROJECT_PATH -it $CONTAINER_NAME bash
+	    else
+	        exit 1
+	    fi
+            shift
+            ;;
+
+
+# --------------------------------------------------
+# 7. CODE GENERATION & MAINTENANCE
+# --------------------------------------------------
         -M|--make-MMC)
             if ! validate_project; then
                 exit 1
@@ -733,7 +777,7 @@ while [[ $# -gt 0 ]]; do
             fi
 
             shift
-            local models=()
+            models=() 
             while [[ $# -gt 0 ]] && [[ "$1" != -* ]]; do
                 models+=("$1")
                 shift
@@ -749,26 +793,105 @@ while [[ $# -gt 0 ]]; do
                 echo "Creating model: $model (with migration, controller, resource)"
                 execute_artisan make:model "$model" -mcr
             done
+            
+            fix_permissions
             ;;
 
-        --composer)
-	    if validate_project; then
-	        echo "📦 Executing composer install in '$PROJECT_NAME'..."
-	        execute_composer install
-	    else
-	        exit 1
-	    fi
-            shift
+        -L|--make-lw)
+            if ! validate_project; then
+                exit 1
+            fi
+
+            if [[ -z "$2" ]] || [[ "$2" == -* ]]; then
+                echo "Error: Must provide a name for the Livewire component (e.g., admin.approvals.SolicitationApprovalTable)"
+                echo "Usage: go -L admin.approvals.SolicitationApprovalTable"
+                exit 1
+            fi
+
+            shift # Remove -L or --make-lw
+            lw_name="$1"
+            echo "✨ Creating Livewire component: $lw_name..."
+            execute_artisan make:livewire "$lw_name"
+            fix_permissions
+            shift # Remove component name
             ;;
 
-        -s|--shell)
-	    if validate_project; then
-	        echo "🖥️  Entering the container shell at path '$PROJECT_PATH'..."
-	        docker exec -w $PROJECT_PATH -it $CONTAINER_NAME bash
-	    else
-	        exit 1
-	    fi
-            shift
+        -C|--make-ctrl)
+            if ! validate_project; then
+                exit 1
+            fi
+
+            if [[ -z "$2" ]] || [[ "$2" == -* ]]; then
+                echo "Error: Must provide a name for the controller (e.g., Admin/InProgressController)"
+                echo "Usage: go -C Admin/InProgressController"
+                exit 1
+            fi
+
+            shift # Remove -C or --make-ctrl
+            ctrl_name="$1"
+            echo "✨ Creating resource controller: $ctrl_name..."
+            execute_artisan make:controller "$ctrl_name" --resource
+            fix_permissions
+            shift # Remove controller name
+            ;;
+
+        --make-seeder)
+            if ! validate_project; then
+                exit 1
+            fi
+
+            if [[ -z "$2" ]] || [[ "$2" == -* ]]; then
+                echo "Error: Must provide a name for the Seeder (e.g., WorkerSeeder)"
+                echo "Usage: go --make-seeder WorkerSeeder"
+                exit 1
+            fi
+
+            shift # Remove --make-seeder
+            seeder_name="$1"
+            echo "💾 Creating Seeder: $seeder_name..."
+            execute_artisan make:seeder "$seeder_name"
+            fix_permissions
+            shift # Remove Seeder name
+            ;;
+
+        -S|--seed)
+            if ! validate_project; then
+                exit 1
+            fi
+
+            if [[ -z "$2" ]] || [[ "$2" == -* ]]; then
+                echo "Error: Must provide the name of the Seeder class to run (e.g., WorkerSeeder)"
+                echo "Usage: go -S WorkerSeeder"
+                exit 1
+            fi
+
+            shift # Remove -S or --seed
+            seeder_class="$1"
+            echo "🌱 Running specific Seeder: $seeder_class..."
+            execute_artisan db:seed --class="$seeder_class"
+            shift # Remove class name
+            ;;
+
+        -a|--artisan)
+            if ! validate_project; then
+                exit 1
+            fi
+
+            shift # Remove -a or --artisan
+
+            # Check if a command was provided after --artisan
+            if [[ $# -eq 0 ]] || [[ "$1" == -* ]]; then
+                echo "Error: Must provide an Artisan command (e.g., go -a queue:work --tries=3)"
+                exit 1
+            fi
+
+            artisan_command="$@"
+            echo "⚙️ Executing Artisan command: php artisan $artisan_command..."
+
+            # Execute the Artisan command with all its arguments
+            execute_artisan $artisan_command
+            
+            shift $#
             ;;
 
 
